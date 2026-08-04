@@ -209,10 +209,12 @@ Goal: a change that regresses gets blocked, with output that explains why.
   SPEC.md inputs and outputs, non-zero exit on `fail`.
   *Acceptance:* a deliberately regressed commit in this repo turns the check red.
   *Test:* the red check is the test. **Capture it, this is Proof Artifact 2.**
-- [ ] **M4.5 [MUST] (45m)** Self-gate: every push to this repo runs the action.
+- [x] **M4.5 [MUST] (45m)** Self-gate: every push to this repo runs the action.
   *Acceptance:* pushes show a ShipGate check, green when the score holds and red
   when it drops past threshold.
-  *Test:* manual, one green push and one deliberately regressed push.
+  *Verified:* push run 30929303019 green at 0.250, dispatch run 30931868809 red
+  with "overall score dropped 0.250 (threshold 0.020)" and six slices flagged.
+  **Proof Artifact 2 is captured from run 30931868809.**
 
 Demo Checkpoint: *"I can push a change that makes the model worse and watch the
 gate turn red and tell me exactly which slice broke."*

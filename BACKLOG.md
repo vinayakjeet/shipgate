@@ -231,7 +231,7 @@ Learning Checkpoint, concept: **eval noise vs real regression.**
 Goal: prove the judge agrees with a human, and show the rubric tuning that got
 it there. This milestone is the point of the project.
 
-- [ ] **M5.1 [MUST] (45m)** `shipgate label` CLI: serves unlabeled items one at
+- [x] **M5.1 [MUST] (45m)** `shipgate label` CLI: serves unlabeled items one at
   a time, writes `labels` JSONL plus Neon rows, resumable mid-session.
   *Acceptance:* killing the process loses no labels.
   *Test:* `tests/calibration/test_label_cli.py::test_resume_after_interrupt`
@@ -239,7 +239,7 @@ it there. This milestone is the point of the project.
   only yours** (SPEC.md D3). Two sittings, blind to judge output.
   *Acceptance:* 100 labeled items committed.
   *Test:* `tests/calibration/test_labels.py::test_100_labels_present`
-- [ ] **M5.3 [MUST] (45m)** Cohen's kappa, raw agreement, confusion matrix.
+- [x] **M5.3 [MUST] (45m)** Cohen's kappa, raw agreement, confusion matrix.
   *Acceptance:* kappa matches a hand-computed value on a known fixture.
   *Test:* `tests/calibration/test_kappa.py::{test_known_fixture,test_perfect_and_chance}`
 - [ ] **M5.4 [MUST] (75m)** Measure rubric v1 kappa, diagnose the

@@ -10,6 +10,7 @@ from typing import Annotated
 import typer
 
 from shipgate.cache import PostgresResultCache
+from shipgate.calibration.labeling import LabelStore, remaining
 from shipgate.config import get_settings
 from shipgate.datasets.diff import diff_files
 from shipgate.datasets.hashing import content_hash
@@ -212,6 +213,83 @@ def run(
         db.insert_run_items(conn, record.run_id, results)
         conn.commit()
     typer.echo(f"run_id={record.run_id}")
+
+
+@app.command()
+def label(
+    dataset: Annotated[Path, typer.Option("--dataset", help="Path to a JSONL dataset.")],
+    labels_path: Annotated[
+        Path, typer.Option("--labels", help="Where labels are written.")
+    ] = Path("datasets/labels.jsonl"),
+    target_label: Annotated[
+        str, typer.Option("--target-label", help="What the model under test predicted.")
+    ] = "billing",
+    limit: Annotated[
+        int, typer.Option("--limit", help="Stop after this many, for short sittings.")
+    ] = 0,
+    store: Annotated[bool, typer.Option("--store/--no-store")] = True,
+) -> None:
+    """Hand-label items as pass or fail, to calibrate the judge against.
+
+    Shows the ticket, the expected intent, and what the model answered. It never
+    shows the judge's verdict, because a labeler who sees it will anchor on it and
+    the resulting agreement number would measure nothing.
+    """
+    try:
+        items = load_jsonl(dataset)
+    except DatasetError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from exc
+
+    dataset_hash = content_hash(items)
+    store_file = LabelStore(labels_path)
+    labeled = store_file.load()
+    todo = remaining(items, labeled)
+
+    if not todo:
+        typer.secho(f"all {len(items)} items already labeled", fg=typer.colors.GREEN)
+        raise typer.Exit(code=0)
+
+    typer.echo(f"{len(labeled)} labeled, {len(todo)} remaining. Ctrl-C is safe, nothing is lost.")
+    typer.echo("Answer: [p]ass  [f]ail  [s]kip  [q]uit\n")
+
+    done = 0
+    for item in todo:
+        if limit and done >= limit:
+            break
+
+        typer.echo("-" * 72)
+        typer.echo(f"{item.id}  ({', '.join(item.slices)})")
+        typer.echo(f"\n  ticket:   {item.input.get('prompt', '')}")
+        typer.echo(f"  expected: {item.expected}")
+        typer.echo(f"  model:    {target_label}\n")
+
+        answer = typer.prompt("  correct?", default="p").strip().lower()
+        if answer in {"q", "quit"}:
+            break
+        if answer in {"s", "skip"}:
+            continue
+
+        verdict = "pass" if answer.startswith("p") else "fail"
+        store_file.append(item.id, verdict, dataset_hash)
+        labeled[item.id] = verdict
+        done += 1
+
+        if store:
+            try:
+                with db.connect() as conn:
+                    db.migrate(conn)
+                    db.upsert_label(conn, dataset.stem, dataset_hash, item.id, verdict)
+                    conn.commit()
+            except db.DatabaseNotConfigured:
+                # The JSONL already has it, so a missing database costs nothing.
+                pass
+
+    typer.echo("-" * 72)
+    typer.secho(
+        f"{len(labeled)} of {len(items)} labeled, {len(items) - len(labeled)} to go",
+        fg=typer.colors.GREEN,
+    )
 
 
 def _emit_action_outputs(outcome, run_id: str) -> None:

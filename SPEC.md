@@ -4,8 +4,8 @@
 
 ShipGate is the system that decides whether an AI change ships. It holds
 versioned eval datasets, three runner types, a run store, and a GitHub Action
-that comments score diffs on PRs and fails the check when a change regresses
-beyond threshold. It is the quality gate the other ten portfolio projects are
+that reports score diffs and fails the check when a change regresses beyond
+threshold. It is the quality gate the other ten portfolio projects are
 judged by, and its own judge is calibrated against hand-labeled ground truth so
 its verdicts are defensible rather than vibes.
 
@@ -36,28 +36,28 @@ that makes the second trustworthy.
 
 ## User-visible behavior
 
-**S1. Regression blocks the merge.**
+**S1. A regression turns the check red.**
 *Given* a gated project with a green baseline on `main`,
-*when* I open a PR whose prompt change drops overall score by 6% (threshold 2%),
-*then* the ShipGate check fails, and a PR comment shows overall delta, the
+*when* a prompt change drops overall score by 6% (threshold 2%),
+*then* the ShipGate check fails, and the verdict summary shows overall delta, the
 per-slice breakdown, and the 3 worst newly-failing examples.
 
 **S2. Improvement passes and is visible.**
 *Given* the same baseline,
-*when* I open a PR that raises score by 4%,
-*then* the check passes and the comment shows the positive delta with cost and
+*when* a change raises score by 4%,
+*then* the check passes and the summary shows the positive delta with cost and
 p50 latency alongside, so a "win" that tripled cost is still legible as a
 tradeoff rather than a free win.
 
 **S3. Noise does not block.**
 *Given* a judge runner with known run-to-run variance,
-*when* a PR scores 1.1% below baseline and the threshold is 2%,
-*then* the check passes and the comment explicitly labels the delta
+*when* a change scores 1.1% below baseline and the threshold is 2%,
+*then* the check passes and the summary explicitly labels the delta
 `within-noise (threshold 2.0%)` rather than silently ignoring it.
 
 **S4. A changed dataset invalidates the baseline.**
 *Given* a stored baseline run against dataset hash `abc123`,
-*when* the dataset is edited (hash becomes `def456`) and a PR runs,
+*when* the dataset is edited (hash becomes `def456`) and the gate runs,
 *then* ShipGate refuses to compare across hashes, reports
 `baseline invalid: dataset changed`, and requires a fresh baseline run on `main`
 before it can gate again.
@@ -66,7 +66,7 @@ before it can gate again.
 *Given* the Gemini free tier at 15 rpm,
 *when* a 100-item judge run exceeds that rate,
 *then* the runner backs off and completes the full run without dropping items,
-and the run record reports wall-clock time honestly rather than failing the PR
+and the run record reports wall-clock time honestly rather than failing the check
 for an infrastructure reason.
 
 **S6. Re-running is cheap.**
@@ -77,8 +77,8 @@ the time, and the run record marks `cache_hit_rate`.
 
 **S7. A slice regresses while the average lies.**
 *Given* a dataset sliced by `lang:hi` and `lang:en`,
-*when* a PR leaves overall score flat but drops `lang:hi` by 12%,
-*then* the check fails on the per-slice guard and the comment names the slice.
+*when* a change leaves overall score flat but drops `lang:hi` by 12%,
+*then* the check fails on the per-slice guard and the summary names the slice.
 
 **S8. Nightly runs show drift over time.**
 *Given* the nightly cron enabled,
@@ -161,7 +161,7 @@ flowchart TB
   ACT --> TGT
   ACT --> GEM
   ACT --> DB
-  ACT -->|"comment + exit code"| PR["PR check"]
+  ACT -->|"summary + exit code"| PR["required check"]
   CRON --> ACT
   API --> DB
   ACT -.->|"OTLP spans"| SPAN["Spanlight"]

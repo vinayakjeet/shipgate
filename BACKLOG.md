@@ -156,19 +156,19 @@ Learning Checkpoint, concept: **how I know my judge is right.**
 
 Goal: every run is queryable, sliceable, and plotted over time.
 
-- [ ] **M3.1 [MUST] (60m)** Full schema: `datasets`, `runs`, `run_items`,
+- [x] **M3.1 [MUST] (60m)** Full schema: `datasets`, `runs`, `run_items`,
   `labels`, plus indices for the dashboard queries.
   *Acceptance:* migration applies clean to an empty Neon database.
   *Test:* `tests/store/test_schema.py::test_migration_idempotent`
-- [ ] **M3.2 [MUST] (60m)** Score aggregation: overall, per slice, cost, p50 and
+- [x] **M3.2 [MUST] (60m)** Score aggregation: overall, per slice, cost, p50 and
   p95 latency, cache-hit rate, computed once and stored on the run.
   *Acceptance:* aggregates match hand-computed values on a fixture run.
   *Test:* `tests/store/test_aggregation.py::test_slice_and_latency_math`
-- [ ] **M3.3 [MUST] (60m)** `GET /api/runs` and `GET /api/runs/{id}` per the
+- [x] **M3.3 [MUST] (60m)** `GET /api/runs` and `GET /api/runs/{id}` per the
   SPEC.md contract.
   *Acceptance:* response matches the documented shape exactly.
   *Test:* `tests/app/test_api_contract.py::test_runs_response_shape`
-- [ ] **M3.4 [MUST] (90m)** Server-rendered dashboard: score over time per
+- [x] **M3.4 [MUST] (90m)** Server-rendered dashboard: score over time per
   dataset, per-slice table, cost and latency columns. No SPA (SPEC.md A6).
   *Acceptance:* loads in a clean browser within 3s warm, readable on mobile.
   *Test:* `tests/app/test_dashboard.py::test_renders_with_runs`

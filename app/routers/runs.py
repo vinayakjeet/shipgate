@@ -24,12 +24,18 @@ def list_runs(
 
 
 @router.get("/runs/{run_id}")
-def get_run(run_id: str) -> dict:
+def get_run(
+    run_id: str,
+    include_items: bool = Query(False, description="Attach per-item results."),
+    failing_only: bool = Query(False, description="With include_items, only items below 1.0."),
+) -> dict:
     try:
         with db.connect() as conn:
             row = db.fetch_run(conn, run_id)
+            if row is None:
+                raise HTTPException(status_code=404, detail=f"run {run_id!r} not found")
+            if include_items:
+                row = {**row, "items": db.fetch_run_items(conn, run_id, failing_only=failing_only)}
     except db.DatabaseNotConfigured as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    if row is None:
-        raise HTTPException(status_code=404, detail=f"run {run_id!r} not found")
     return row

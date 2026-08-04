@@ -6,7 +6,7 @@ from app.config import get_settings
 from app.logging_config import configure_logging
 from app.middleware import RequestContextMiddleware
 from app.otel_bootstrap import setup_otel
-from app.routers import demo, health, runs
+from app.routers import dashboard, demo, health, runs
 
 
 def create_app() -> FastAPI:
@@ -16,6 +16,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="ai-portfolio-template", version="0.1.0")
     app.add_middleware(RequestContextMiddleware)
 
+    app.include_router(dashboard.router)
     app.include_router(health.router)
     app.include_router(runs.router)
     app.include_router(demo.router)

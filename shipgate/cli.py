@@ -170,6 +170,7 @@ def run(
         cost_usd=0.0,
         p50_latency_ms=p50_latency_ms(results),
         cache_hit_rate=cache_hit_rate(results),
+        error_count=error_count(results),
         trigger=trigger,
     )
 
@@ -191,6 +192,7 @@ def run(
     with db.connect() as conn:
         db.migrate(conn)
         db.insert_run(conn, record)
+        db.insert_run_items(conn, record.run_id, results)
         conn.commit()
     typer.echo(f"run_id={record.run_id}")
 

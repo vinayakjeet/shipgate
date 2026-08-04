@@ -50,6 +50,7 @@ class RunRecord(BaseModel):
     cost_usd: float | None = None
     p50_latency_ms: float | None = None
     cache_hit_rate: float | None = None
+    error_count: int = 0
     trigger: str = "manual"
     started_at: datetime | None = None
     finished_at: datetime | None = None

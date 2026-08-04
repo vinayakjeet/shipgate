@@ -15,6 +15,9 @@ from shipgate.datasets.diff import diff_files
 from shipgate.datasets.hashing import content_hash
 from shipgate.datasets.loader import DatasetError, load_jsonl
 from shipgate.datasets.manifest import manifest_for_file, manifest_path_for, write_manifest
+from shipgate.gate.baseline import resolve_baseline
+from shipgate.gate.report import render_summary
+from shipgate.gate.verdict import evaluate
 from shipgate.runners.base import execute_run
 from shipgate.runners.exact import ExactMatchRunner
 from shipgate.scoring import (
@@ -50,6 +53,19 @@ def _git_sha() -> str:
         ).strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return get_settings().git_sha
+
+
+def _git_ref() -> str | None:
+    """Branch name. Baseline resolution filters on this, so an unknown ref means
+    the run simply never becomes a baseline rather than corrupting one."""
+    if value := os.environ.get("GITHUB_REF_NAME"):
+        return value
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"], text=True, stderr=subprocess.DEVNULL
+        ).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
 
 
 @app.command()
@@ -162,6 +178,7 @@ def run(
         dataset_id=dataset_id or dataset.stem,
         dataset_hash=dataset_hash,
         git_sha=_git_sha(),
+        git_ref=_git_ref(),
         runner=runner,
         model=StubTarget.name,
         n=len(results),
@@ -195,6 +212,131 @@ def run(
         db.insert_run_items(conn, record.run_id, results)
         conn.commit()
     typer.echo(f"run_id={record.run_id}")
+
+
+def _emit_action_outputs(outcome, run_id: str) -> None:
+    """Write step outputs when running inside GitHub Actions.
+
+    A no-op locally, so the same command works in both places rather than needing
+    a CI-only code path that only gets exercised in CI.
+    """
+    path = os.environ.get("GITHUB_OUTPUT")
+    if not path:
+        return
+    delta = "" if outcome.delta is None else f"{outcome.delta:.4f}"
+    baseline = "" if outcome.baseline_score is None else f"{outcome.baseline_score:.4f}"
+    lines = [
+        f"verdict={outcome.verdict.value}",
+        f"score={outcome.score:.4f}",
+        f"baseline_score={baseline}",
+        f"delta={delta}",
+        f"run_id={run_id}",
+        f"failing_slices={','.join(outcome.failing_slices)}",
+    ]
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+@app.command()
+def gate(
+    dataset: Annotated[Path, typer.Option("--dataset", help="Path to a JSONL dataset.")],
+    dataset_id: Annotated[
+        str | None, typer.Option("--dataset-id", help="Defaults to the filename.")
+    ] = None,
+    runner: Annotated[str, typer.Option("--runner")] = "exact",
+    baseline_ref: Annotated[
+        str, typer.Option("--baseline-ref", help="Branch the baseline comes from.")
+    ] = "main",
+    threshold_overall: Annotated[float, typer.Option("--threshold-overall")] = 0.02,
+    threshold_slice: Annotated[float, typer.Option("--threshold-slice")] = 0.05,
+    summary_path: Annotated[
+        Path | None, typer.Option("--summary", help="Write the markdown verdict here.")
+    ] = None,
+    target_label: Annotated[
+        str,
+        typer.Option(
+            "--target-label",
+            help="Label the stub target predicts. Changing it simulates a model change.",
+        ),
+    ] = "billing",
+) -> None:
+    """Score a dataset, compare against the baseline, and fail on regression."""
+    if runner not in RUNNERS:
+        raise typer.BadParameter(f"unknown runner {runner!r}. Valid: {', '.join(RUNNERS)}")
+
+    try:
+        items = load_jsonl(dataset)
+    except DatasetError as exc:
+        typer.secho(str(exc), fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=2) from exc
+
+    dataset_hash = content_hash(items)
+    results = asyncio.run(
+        execute_run(
+            RUNNERS[runner](), items, StubTarget(target_label), dataset_hash=dataset_hash
+        )
+    )
+
+    record = RunRecord(
+        run_id=f"r_{uuid.uuid4().hex[:16]}",
+        dataset_id=dataset_id or dataset.stem,
+        dataset_hash=dataset_hash,
+        git_sha=_git_sha(),
+        git_ref=_git_ref(),
+        runner=runner,
+        model=f"{StubTarget.name}:{target_label}",
+        n=len(results),
+        score=overall_score(results),
+        slices=slice_scores(results),
+        cost_usd=0.0,
+        p50_latency_ms=p50_latency_ms(results),
+        cache_hit_rate=cache_hit_rate(results),
+        error_count=error_count(results),
+        trigger="gate",
+    )
+
+    with db.connect() as conn:
+        db.migrate(conn)
+
+        # Resolve the baseline BEFORE storing this run. Otherwise the run becomes
+        # its own baseline, every delta is exactly zero, and the gate can never
+        # fail. exclude_run_id guards the same mistake from the other direction.
+        baseline = resolve_baseline(
+            conn,
+            record.dataset_id,
+            record.dataset_hash,
+            baseline_ref,
+            exclude_run_id=record.run_id,
+        )
+
+        # Evaluate before storing, so the verdict is recorded with the run. A run
+        # saved without one is eligible to become tomorrow's baseline, which is
+        # how a regression becomes the new normal after failing exactly once.
+        outcome = evaluate(
+            record,
+            baseline,
+            threshold_overall=threshold_overall,
+            threshold_slice=threshold_slice,
+        )
+        record = record.model_copy(update={"verdict": outcome.verdict.value})
+
+        db.insert_run(conn, record)
+        db.insert_run_items(conn, record.run_id, results)
+        conn.commit()
+
+        failing = db.fetch_run_items(conn, record.run_id, failing_only=True)
+
+    summary = render_summary(outcome, failing)
+    typer.echo(summary)
+    if summary_path:
+        summary_path.write_text(summary + "\n", encoding="utf-8")
+
+    _emit_action_outputs(outcome, record.run_id)
+
+    # Only a real regression blocks. A missing baseline or a run full of provider
+    # errors exits zero and complains, because blocking on infrastructure trains
+    # people to bypass the gate.
+    raise typer.Exit(code=1 if outcome.blocks else 0)
 
 
 if __name__ == "__main__":

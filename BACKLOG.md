@@ -191,21 +191,21 @@ Learning Checkpoint, concept: **offline evals vs online monitoring split.**
 
 Goal: a change that regresses gets blocked, with output that explains why.
 
-- [ ] **M4.1 [MUST] (60m)** Baseline resolution: latest successful run on `main`
+- [x] **M4.1 [MUST] (60m)** Baseline resolution: latest successful run on `main`
   for the same `dataset_hash`, explicit `baseline-invalid` when absent.
   *Acceptance:* S4 from SPEC.md holds. A changed hash refuses comparison.
   *Test:* `tests/gate/test_baseline.py::{test_resolves_latest,test_hash_mismatch_invalid}`
-- [ ] **M4.2 [MUST] (60m)** Threshold logic: overall and per-slice guards,
+- [x] **M4.2 [MUST] (60m)** Threshold logic: overall and per-slice guards,
   verdict `pass | fail | baseline-invalid`.
   *Acceptance:* S1, S3, and S7 from SPEC.md all hold on fixtures.
   *Test:* `tests/gate/test_threshold.py::{test_fails_over,test_passes_within_noise,test_slice_guard}`
-- [ ] **M4.3 [MUST] (75m)** Verdict renderer: delta table, per-slice breakdown,
+- [x] **M4.3 [MUST] (75m)** Verdict renderer: delta table, per-slice breakdown,
   3 worst newly-failing examples, cost and latency. Written to the Actions job
   summary, and reusable as a PR comment body for any repo that uses PRs.
   *Acceptance:* the summary is legible and explains why the gate failed without
   opening the logs.
   *Test:* `tests/gate/test_comment.py::{test_renders_markdown,test_names_failing_slice}`
-- [ ] **M4.4 [MUST] (60m)** Package as a composite GitHub Action with the
+- [x] **M4.4 [MUST] (60m)** Package as a composite GitHub Action with the
   SPEC.md inputs and outputs, non-zero exit on `fail`.
   *Acceptance:* a deliberately regressed commit in this repo turns the check red.
   *Test:* the red check is the test. **Capture it, this is Proof Artifact 2.**

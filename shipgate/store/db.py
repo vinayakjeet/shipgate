@@ -77,13 +77,14 @@ def insert_run(conn: psycopg.Connection, run: RunRecord) -> str:
     conn.execute(
         """
         insert into runs (
-            run_id, dataset_id, dataset_hash, git_sha, runner, model,
+            run_id, dataset_id, dataset_hash, git_sha, git_ref, runner, model,
             n, score, slices, cost_usd, p50_latency_ms, cache_hit_rate,
-            error_count, trigger
+            error_count, verdict, trigger
         ) values (
-            %(run_id)s, %(dataset_id)s, %(dataset_hash)s, %(git_sha)s, %(runner)s, %(model)s,
+            %(run_id)s, %(dataset_id)s, %(dataset_hash)s, %(git_sha)s, %(git_ref)s,
+            %(runner)s, %(model)s,
             %(n)s, %(score)s, %(slices)s, %(cost_usd)s, %(p50_latency_ms)s,
-            %(cache_hit_rate)s, %(error_count)s, %(trigger)s
+            %(cache_hit_rate)s, %(error_count)s, %(verdict)s, %(trigger)s
         )
         """,
         {**run.model_dump(exclude={"slices", "started_at", "finished_at"}),

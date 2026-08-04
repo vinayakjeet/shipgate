@@ -1,0 +1,91 @@
+name: ShipGate
+description: Score an eval dataset, compare against the baseline, and fail the check on regression.
+author: vinayakjeet
+
+branding:
+  icon: shield
+  color: red
+
+inputs:
+  dataset:
+    description: Path to the JSONL eval dataset.
+    required: true
+  dataset-id:
+    description: Identifier for the dataset. Defaults to the filename stem.
+    required: false
+    default: ""
+  runner:
+    description: "Runner type: exact, judge, or pairwise."
+    required: false
+    default: exact
+  baseline-ref:
+    description: Branch the baseline run must come from.
+    required: false
+    default: main
+  threshold-overall:
+    description: Absolute overall score drop that fails the check.
+    required: false
+    default: "0.02"
+  threshold-slice:
+    description: Absolute per-slice score drop that fails the check.
+    required: false
+    default: "0.05"
+
+outputs:
+  verdict:
+    description: "pass, fail, baseline-invalid, or run-invalid."
+    value: ${{ steps.gate.outputs.verdict }}
+  score:
+    description: Overall score for this run.
+    value: ${{ steps.gate.outputs.score }}
+  baseline_score:
+    description: Overall score of the baseline run, empty when there is none.
+    value: ${{ steps.gate.outputs.baseline_score }}
+  delta:
+    description: Score change against the baseline, empty when there is none.
+    value: ${{ steps.gate.outputs.delta }}
+  run_id:
+    description: Identifier of the run this action recorded.
+    value: ${{ steps.gate.outputs.run_id }}
+  failing_slices:
+    description: Comma-separated slices that regressed past the threshold.
+    value: ${{ steps.gate.outputs.failing_slices }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}/..
+      run: uv sync --frozen --no-dev
+
+    - name: Run the gate
+      id: gate
+      shell: bash
+      working-directory: ${{ github.action_path }}/..
+      env:
+        # The workflow supplies these. SHIPGATE_DB_URL is where baselines live,
+        # so without it every run reports baseline-invalid rather than gating.
+        SHIPGATE_DB_URL: ${{ env.SHIPGATE_DB_URL }}
+        GEMINI_API_KEY: ${{ env.GEMINI_API_KEY }}
+      run: |
+        set -o pipefail
+        uv run python -m shipgate gate \
+          --dataset "${{ github.workspace }}/${{ inputs.dataset }}" \
+          ${{ inputs.dataset-id && format('--dataset-id {0}', inputs.dataset-id) || '' }} \
+          --runner "${{ inputs.runner }}" \
+          --baseline-ref "${{ inputs.baseline-ref }}" \
+          --threshold-overall "${{ inputs.threshold-overall }}" \
+          --threshold-slice "${{ inputs.threshold-slice }}" \
+          --summary "$RUNNER_TEMP/shipgate-summary.md"
+        # Exit code is preserved so a regression fails the check.
+
+    - name: Publish the verdict
+      if: always()
+      shell: bash
+      run: cat "$RUNNER_TEMP/shipgate-summary.md" >> "$GITHUB_STEP_SUMMARY"

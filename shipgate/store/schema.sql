@@ -53,11 +53,19 @@ create table if not exists runs (
 -- `if not exists` and additive-only, so applying the file to any database, fresh
 -- or existing, converges to the same shape.
 alter table runs add column if not exists error_count integer not null default 0;
+-- Which branch produced the run. Baseline resolution needs it: the baseline is
+-- the latest clean run on the default branch, not merely the latest run.
+alter table runs add column if not exists git_ref text;
+-- The gate's own verdict on this run. A run that failed the gate must never
+-- become the baseline, or a regression fails once and then quietly becomes the
+-- standard every later run is measured against. Null means the run predates
+-- the gate or was never gated, which is still eligible.
+alter table runs add column if not exists verdict text;
 
 -- Baseline resolution (M4.1) looks up the latest run for a dataset hash,
 -- so that lookup gets its own index rather than scanning the table.
 create index if not exists runs_baseline_idx
-    on runs (dataset_id, dataset_hash, started_at desc);
+    on runs (dataset_id, dataset_hash, git_ref, started_at desc);
 
 -- Per-item outcomes for a run. The gate needs these to name the worst
 -- newly-failing examples, which is the difference between "score dropped 4

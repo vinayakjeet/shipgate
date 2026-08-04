@@ -45,12 +45,14 @@ class RunRecord(BaseModel):
     n: int
     score: float
     git_sha: str | None = None
+    git_ref: str | None = None
     model: str | None = None
     slices: dict[str, float] = Field(default_factory=dict)
     cost_usd: float | None = None
     p50_latency_ms: float | None = None
     cache_hit_rate: float | None = None
     error_count: int = 0
+    verdict: str | None = None
     trigger: str = "manual"
     started_at: datetime | None = None
     finished_at: datetime | None = None

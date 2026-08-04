@@ -1,14 +1,19 @@
-# Walking skeleton of the gate (M0.4). It scores the dataset and records the run.
-# Milestone 4 replaces the bare run with baseline comparison, a verdict summary,
-# and a non-zero exit on regression.
+# ShipGate gates itself. If its own gate cannot block a ShipGate regression, it
+# does not ship. This is also where Proof Artifact 2 is captured: a deliberately
+# regressed commit turns this check red with a summary naming the failing slice.
 name: Eval
 
 on:
   push:
   workflow_dispatch:
+    inputs:
+      target-label:
+        description: "Label the stub target predicts. Set to something invalid to demonstrate a regression."
+        required: false
+        default: billing
 
 jobs:
-  eval:
+  gate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,21 +26,27 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
-      - name: Score the smoke dataset
+      - name: Run the gate
+        id: gate
         env:
           SHIPGATE_DB_URL: ${{ secrets.SHIPGATE_DB_URL }}
         run: |
-          uv run python -m shipgate run \
-            --dataset fixtures/smoke.jsonl \
-            --trigger pr \
-            | tee eval-output.txt
+          set -o pipefail
+          uv run python -m shipgate gate \
+            --dataset datasets/support-intent.jsonl \
+            --baseline-ref main \
+            --target-label "${{ github.event.inputs.target-label || 'billing' }}" \
+            --summary "$RUNNER_TEMP/summary.md"
 
-      - name: Publish score to the job summary
+      - name: Publish the verdict
+        # Runs even when the gate fails, which is the case where the summary
+        # actually matters.
+        if: always()
         run: |
-          {
-            echo "### Eval result"
-            echo ''
-            echo '```'
-            cat eval-output.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -f "$RUNNER_TEMP/summary.md" ]; then
+            cat "$RUNNER_TEMP/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## ShipGate did not produce a verdict" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "The gate failed before scoring. Check the job log." >> "$GITHUB_STEP_SUMMARY"
+          fi

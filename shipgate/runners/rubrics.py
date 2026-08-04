@@ -38,7 +38,34 @@ RUBRIC_V1 = Rubric(
     ),
 )
 
-RUBRICS = {RUBRIC_V1.version: RUBRIC_V1}
+PAIRWISE_SYSTEM = (
+    "You compare two candidate answers to a support ticket and pick the better "
+    "one. You reply with JSON only, no prose, no code fences."
+)
+
+# Labels are deliberately positional (A and B) rather than named, so the runner
+# can swap them and measure whether the judge is picking a side or a position.
+PAIRWISE_V1 = Rubric(
+    version="pw-v1",
+    system=PAIRWISE_SYSTEM,
+    template=(
+        "Ticket: {ticket}\n"
+        "Correct intent: {expected}\n\n"
+        "Answer A: {a}\n"
+        "Answer B: {b}\n\n"
+        'Which answer is better? Reply {{"winner": "A" or "B", "reason": "..."}}'
+    ),
+)
+
+
+class PairwiseRubric(Rubric):
+    def render_pair(self, ticket: str, expected: str, a: str, b: str) -> str:
+        return self.template.format(ticket=ticket, expected=expected, a=a, b=b)
+
+
+PAIRWISE_RUBRIC_V1 = PairwiseRubric(**PAIRWISE_V1.model_dump())
+
+RUBRICS = {RUBRIC_V1.version: RUBRIC_V1, PAIRWISE_RUBRIC_V1.version: PAIRWISE_RUBRIC_V1}
 
 
 def get_rubric(version: str) -> Rubric:

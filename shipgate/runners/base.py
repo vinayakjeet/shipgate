@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import Protocol, runtime_checkable
 
@@ -65,17 +66,23 @@ async def execute_run(
     *,
     dataset_hash: str = "",
     cache: ResultCache | None = None,
+    concurrency: int = 1,
 ) -> list[ItemResult]:
     """Score every item, reusing cached results where the inputs are unchanged.
 
     A failing item is recorded and the run continues. One malformed row must not
     cost the other ninety-nine, especially on a free tier where re-running is
     measured in minutes of rate-limited waiting.
+
+    `concurrency` bounds in-flight scoring. Size it to the provider's rate limit,
+    not to the machine: on a 15 rpm free tier, firing 100 requests at once just
+    converts the whole run into 429s and backoff. The semaphore is deliberately
+    held only around the scoring call, so cache hits never consume a slot.
     """
     target_fingerprint = getattr(target, "fingerprint", getattr(target, "name", "unknown"))
-    results: list[ItemResult] = []
+    semaphore = asyncio.Semaphore(max(1, concurrency))
 
-    for item in items:
+    async def score_one(item: DatasetItem) -> ItemResult:
         key = cache_key(
             dataset_hash=dataset_hash,
             item_id=item.id,
@@ -86,14 +93,14 @@ async def execute_run(
         if cache is not None:
             cached = await cache.get(key)
             if cached is not None:
-                results.append(cached.model_copy(update={"cache_hit": True}))
-                continue
+                return cached.model_copy(update={"cache_hit": True})
 
         started = time.monotonic()
         try:
-            result = await runner.score_item(item, target)
+            async with semaphore:
+                result = await runner.score_item(item, target)
         except Exception as exc:  # noqa: BLE001 - one bad item must not kill the run
-            result = ItemResult(
+            return ItemResult(
                 item_id=item.id,
                 output="",
                 score=0.0,
@@ -102,12 +109,12 @@ async def execute_run(
                 error=f"{type(exc).__name__}: {exc}",
             )
 
-        results.append(result)
-
         # Errors are never cached. A rate limit or a parse failure is a property
         # of that moment, not of the input, and caching it would make one bad
         # minute permanent.
         if cache is not None and result.error is None:
             await cache.put(key, result)
+        return result
 
-    return results
+    # gather preserves input order, so results still line up with items.
+    return list(await asyncio.gather(*(score_one(item) for item in items)))

@@ -28,13 +28,13 @@ visible on a deployed Render URL, run by a GitHub Action. Ugly is fine.
   *Acceptance:* `uv run python -m shipgate run --dataset fixtures/smoke.jsonl` prints
   `score=0.60 n=5` and the row appears in Neon.
   *Test:* `tests/cli/test_run_smoke.py::test_run_writes_one_row`
-- [ ] **M0.3 [MUST] (45m)** Deploy the FastAPI app to Render free with
+- [x] **M0.3 [MUST] (45m)** Deploy the FastAPI app to Render free with
   `GET /api/runs` reading Neon.
   *Acceptance:* the public URL returns the M0.2 run as JSON in a clean browser.
   *Test:* `tests/app/test_runs_endpoint.py::test_runs_returns_rows` plus manual.
-  *Status:* code merged, tested locally, and `/healthz` is live (21.6s cold
-  start). Render is still serving the pre-walking-skeleton build, so `/api/runs`
-  returns 404. Blocked on a successful Render deploy of the current commit.
+  *Verified:* https://shipgate-890d.onrender.com/api/runs returns real rows
+  from Neon, 0.18s warm. The failure was `uv run` in the start command blowing
+  past Render's port-scan window (see DECISIONS.md).
 - [x] **M0.4 [MUST] (30m)** GitHub Action workflow that runs M0.2 on PR and
   echoes the score into the job log.
   *Acceptance:* a throwaway PR shows the score in the Actions log.
@@ -113,7 +113,7 @@ Learning Checkpoint, concept: **eval set rot.**
 Goal: three runner types sharing one protocol, with caching, backoff, and
 parallelism, built on the chassis `llm/` client rather than reinvented.
 
-- [ ] **M2.1 [MUST] (45m)** `Runner` protocol and `ExactMatchRunner` (normalized
+- [x] **M2.1 [MUST] (45m)** `Runner` protocol and `ExactMatchRunner` (normalized
   string compare), per-item result records.
   *Acceptance:* score and per-item pass/fail correct on a fixture.
   *Test:* `tests/runners/test_exact.py::{test_scoring,test_normalization}`
@@ -127,15 +127,15 @@ parallelism, built on the chassis `llm/` client rather than reinvented.
   *Acceptance:* a second identical run makes zero provider calls and reports
   `cache_hit_rate == 1.0`.
   *Test:* `tests/runners/test_cache.py::test_second_run_makes_no_calls`
-- [ ] **M2.4 [MUST] (60m)** Free-tier backoff: reuse `llm/throttle.py` and
+- [x] **M2.4 [MUST] (60m)** Free-tier backoff: reuse `llm/throttle.py` and
   `llm/retry.py` so a 429 storm completes without dropping items.
   *Acceptance:* simulated 429s on 30% of calls still yields n=100 results.
   *Test:* `tests/runners/test_backoff.py::test_no_items_dropped_under_429s`
-- [ ] **M2.5 [MUST] (60m)** Bounded parallelism (asyncio semaphore) sized to the
+- [x] **M2.5 [MUST] (60m)** Bounded parallelism (asyncio semaphore) sized to the
   provider's rpm. The brief lists parallelism under MUST.
   *Acceptance:* 100 items complete measurably faster with no added 429 failures.
   *Test:* `tests/runners/test_parallel.py::test_concurrency_bound_respected`
-- [ ] **M2.6 [MUST] (60m)** `PairwiseRunner` (A/B preference against baseline
+- [x] **M2.6 [MUST] (60m)** `PairwiseRunner` (A/B preference against baseline
   output) with position-bias swap. Third of the three required runner types.
   *Acceptance:* swapping A and B does not change aggregate preference beyond
   noise.

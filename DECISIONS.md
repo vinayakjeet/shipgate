@@ -13,6 +13,46 @@ reconstructed later from memory. Newest entries at the top.
 **Consequences:** what this makes easier or harder later.
 ```
 
+## 2026-08-04: Render start command calls the venv interpreter, not `uv run`
+
+**Context:** deploys built successfully but Render reported "Port scan timeout
+reached, no open ports detected" and kept serving the previous build, so new
+routes never appeared while `/healthz` stayed green. The build log showed uvicorn
+starting and binding port 10000, which made it look like a Render fault.
+
+**Decision:** the start command is
+`.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+
+**Alternatives considered:** `uv run uvicorn ...`, which is what the chassis
+Dockerfile uses and what the backlog assumed. `uv run` re-resolves and syncs the
+project before executing, so on a cold container it either exceeds the port-scan
+window or fails outright because uv was installed during build and is not
+guaranteed to be on the runtime PATH.
+
+**Consequences:** the runtime no longer depends on uv at all, only on the `.venv`
+the build produced. This applies to every project in the portfolio that deploys a
+Python service to Render, so it belongs in the chassis rather than only here.
+
+## 2026-08-04: Pairwise comparisons are judged twice, in both orders
+
+**Context:** LLM judges have a strong, well-documented preference for whichever
+candidate appears first. A single-order pairwise eval largely measures ordering
+rather than quality.
+
+**Decision:** every pair is judged twice with positions swapped and the two
+verdicts averaged. A consistent judge scores 1.0 or 0.0, while a purely
+position-biased judge contradicts itself and scores 0.5. `position_bias_rate`
+reports the fraction of comparisons that flipped.
+
+**Alternatives considered:** judging once and accepting the bias, which is
+cheaper but produces a number that cannot be defended; randomising the order per
+item, which spreads the bias across the dataset instead of measuring it, so the
+aggregate looks reasonable while every individual comparison stays untrustworthy.
+
+**Consequences:** pairwise runs cost two judge calls per item, which matters on a
+15 rpm free tier. In exchange the position bias becomes an observable number, and
+a high rate invalidates the run rather than silently favouring a side.
+
 ## 2026-08-04: ShipGate self-gates; wiring the gated projects moves to their own backlogs
 
 **Context:** the brief requires ShipGate to be "wired to at least Tollgate by end

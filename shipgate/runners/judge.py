@@ -21,12 +21,13 @@ class JudgeParseError(ValueError):
 JUDGE_FAILURES = (JudgeParseError, ProviderError, ProviderClientError, ProviderConfigError)
 
 
-def parse_verdict(text: str) -> tuple[float, str]:
-    """Turn a judge reply into (score, reason).
+def parse_json_object(text: str) -> dict:
+    """Pull a JSON object out of a judge reply, fences and all.
 
-    Strict on purpose. A judge that returns junk must surface as an error rather
-    than quietly scoring zero, because a scoring bug and a genuine model failure
-    look identical in the aggregate and only one of them is a regression.
+    Shared by every judge-backed runner so they fail identically on junk. Strict
+    on purpose: a judge that returns garbage must surface as an error rather than
+    quietly scoring zero, because a parsing bug and a genuine model failure look
+    identical in the aggregate and only one of them is a regression.
     """
     cleaned = _FENCE.sub("", text).strip()
     if not cleaned:
@@ -39,7 +40,12 @@ def parse_verdict(text: str) -> tuple[float, str]:
 
     if not isinstance(payload, dict):
         raise JudgeParseError(f"judge response was not a JSON object: {text[:200]!r}")
+    return payload
 
+
+def parse_verdict(text: str) -> tuple[float, str]:
+    """Turn a judge reply into (score, reason)."""
+    payload = parse_json_object(text)
     verdict = str(payload.get("verdict", "")).strip().lower()
     if verdict not in {"pass", "fail"}:
         raise JudgeParseError(f"verdict must be 'pass' or 'fail', got {verdict!r}")

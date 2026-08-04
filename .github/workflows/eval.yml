@@ -1,0 +1,41 @@
+# Walking skeleton of the gate (M0.4). It scores the dataset and records the run.
+# Milestone 4 replaces the bare run with baseline comparison, a verdict summary,
+# and a non-zero exit on regression.
+name: Eval
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Score the smoke dataset
+        env:
+          SHIPGATE_DB_URL: ${{ secrets.SHIPGATE_DB_URL }}
+        run: |
+          uv run python -m shipgate run \
+            --dataset fixtures/smoke.jsonl \
+            --trigger pr \
+            | tee eval-output.txt
+
+      - name: Publish score to the job summary
+        run: |
+          {
+            echo "### Eval result"
+            echo ''
+            echo '```'
+            cat eval-output.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

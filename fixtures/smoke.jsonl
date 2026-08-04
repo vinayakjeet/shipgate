@@ -1,0 +1,5 @@
+{"id": "s-001", "input": {"prompt": "I was charged twice for my subscription this month."}, "expected": "billing", "slices": ["lang:en", "intent:billing"]}
+{"id": "s-002", "input": {"prompt": "My invoice shows the wrong amount for October."}, "expected": "billing", "slices": ["lang:en", "intent:billing"]}
+{"id": "s-003", "input": {"prompt": "Please refund the duplicate payment on my card."}, "expected": "billing", "slices": ["lang:en", "intent:billing"]}
+{"id": "s-004", "input": {"prompt": "The app crashes every time I open the settings screen."}, "expected": "technical", "slices": ["lang:en", "intent:technical"]}
+{"id": "s-005", "input": {"prompt": "I cannot reset my password, the email never arrives."}, "expected": "account", "slices": ["lang:en", "intent:account"]}

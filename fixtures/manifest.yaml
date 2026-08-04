@@ -1,0 +1,12 @@
+datasets:
+  smoke:
+    id: smoke
+    path: fixtures/smoke.jsonl
+    hash: sha256:81b5f25cdbe12635a072e5e643fd61627d563b742b4feea11478a7ba19ed5a10
+    n: 5
+    slice_counts:
+      intent:account: 1
+      intent:billing: 3
+      intent:technical: 1
+      lang:en: 5
+    created_at: '2026-08-04T10:57:40+00:00'

@@ -61,6 +61,19 @@ def test_handles_the_list_wrapped_error_object():
     assert parse_retry_after(resp) == 12.0
 
 
+def test_millisecond_delays_are_not_read_as_seconds():
+    """Gemini reports sub-second waits in ms. Reading "607.269104ms" as 607
+    seconds stalls a run for ten minutes over a delay of half a second, which is
+    exactly what happened before this was handled."""
+    resp = response(json_body=[{"error": {"message": "Please retry in 607.269104ms."}}])
+    assert parse_retry_after(resp) == pytest.approx(0.607, abs=1e-3)
+
+
+def test_second_delays_still_read_as_seconds():
+    resp = response(json_body={"error": {"message": "Please retry in 39.5s."}})
+    assert parse_retry_after(resp) == pytest.approx(39.5)
+
+
 def test_returns_none_when_nothing_says():
     assert parse_retry_after(response(json_body={"error": {"message": "slow down"}})) is None
 

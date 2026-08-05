@@ -49,7 +49,7 @@ def normalise(text: str) -> str:
     return named[0] if len(named) == 1 else ""
 
 
-async def main(dataset: str, out_path: Path, provider: str, limit: int) -> None:
+async def main(dataset: str, out_path: Path, provider: str, limit: int, rpm: float) -> None:
     items = load_jsonl(dataset)
 
     done: dict[str, str] = {}
@@ -74,10 +74,23 @@ async def main(dataset: str, out_path: Path, provider: str, limit: int) -> None:
         print(f"complete. accuracy against expected: {agree}/{len(items)}", flush=True)
         return
 
-    client = ChatClient(max_retry_attempts=6)
+    # Pace under the limit rather than discovering it. The free tier allows about
+    # 20 requests per rolling minute, and hitting that wall costs 40 to 60 seconds
+    # of backoff per item, which turns a six minute job into an hour. Staying just
+    # below the ceiling means no 429s at all.
+    min_gap = 60.0 / rpm if rpm > 0 else 0.0
+    last_call = 0.0
+
+    client = ChatClient(max_retry_attempts=3)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     for n, item in enumerate(todo, start=1):
+        if min_gap:
+            elapsed = asyncio.get_running_loop().time() - last_call
+            if last_call and elapsed < min_gap:
+                await asyncio.sleep(min_gap - elapsed)
+        last_call = asyncio.get_running_loop().time()
+
         prompt = f"Ticket: {item.input['prompt']}\n\nIntent:"
         messages = [
             ChatMessage(role="system", content=SYSTEM),
@@ -120,5 +133,11 @@ if __name__ == "__main__":
     parser.add_argument("--out", type=Path, default=Path("datasets/predictions-gemini.jsonl"))
     parser.add_argument("--provider", default="gemini")
     parser.add_argument("--limit", type=int, default=0, help="Stop after N, for short windows.")
+    parser.add_argument(
+        "--rpm",
+        type=float,
+        default=15.0,
+        help="Requests per minute to pace at. Keep below the provider limit (20).",
+    )
     args = parser.parse_args()
-    asyncio.run(main(args.dataset, args.out, args.provider, args.limit))
+    asyncio.run(main(args.dataset, args.out, args.provider, args.limit, args.rpm))

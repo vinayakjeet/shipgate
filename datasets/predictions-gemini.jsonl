@@ -24,3 +24,39 @@
 {"item_id": "sup-021", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
 {"item_id": "sup-023", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
 {"item_id": "sup-022", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-024", "prediction": "", "expected": "billing", "model": "gemini", "error": "ProviderError: gemini: network error: [Errno 11001] getaddrinfo failed"}
+{"item_id": "sup-019", "prediction": "", "expected": "billing", "model": "gemini", "error": "ProviderError: gemini: network error: [Errno 11001] getaddrinfo failed"}
+{"item_id": "sup-021", "prediction": "billing", "expected": "billing", "model": "gemini-flash-latest", "error": ""}
+{"item_id": "sup-025", "prediction": "billing", "expected": "billing", "model": "gemini-flash-latest", "error": ""}
+{"item_id": "sup-023", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-022", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-026", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-019", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-024", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-022", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-023", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-027", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-023", "prediction": "", "expected": "billing", "model": "gemini", "error": "ProviderError: gemini: network error: "}
+{"item_id": "sup-025", "prediction": "", "expected": "billing", "model": "gemini", "error": "ProviderError: gemini: network error: "}
+{"item_id": "sup-024", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-024", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-028", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-019", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-026", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-022", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-025", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-023", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-029", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-027", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-026", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-019", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-030", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-028", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-022", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-027", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-023", "prediction": "", "expected": "billing", "model": "gemini", "error": "ProviderError: gemini: network error: [Errno 11001] getaddrinfo failed"}
+{"item_id": "sup-024", "prediction": "", "expected": "billing", "model": "gemini", "error": "ProviderError: gemini: network error: [Errno 11001] getaddrinfo failed"}
+{"item_id": "sup-031", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-028", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-029", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-026", "prediction": "", "expected": "technical", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}

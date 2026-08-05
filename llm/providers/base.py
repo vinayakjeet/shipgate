@@ -37,7 +37,12 @@ def default_usage_parser(payload: dict) -> tuple[int | None, int | None]:
     return usage.get("prompt_tokens"), usage.get("completion_tokens")
 
 
-_RETRY_IN_SECONDS = re.compile(r"retry in ([\d.]+)\s*s", re.IGNORECASE)
+_RETRY_IN = re.compile(r"retry in ([\d.]+)\s*(ms|s)\b", re.IGNORECASE)
+
+# Reasoning models spend far longer than httpx's 5 second default before the first
+# byte, so leaving it unset turns ordinary slow generations into network errors.
+# Generous rather than unbounded: a genuinely hung connection must still fail.
+DEFAULT_TIMEOUT = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
 
 
 def parse_retry_after(resp: httpx.Response) -> float | None:
@@ -89,8 +94,11 @@ def parse_retry_after(resp: httpx.Response) -> float | None:
             except ValueError:
                 continue
 
-    if match := _RETRY_IN_SECONDS.search(str(error.get("message", ""))):
-        return float(match.group(1))
+    if match := _RETRY_IN.search(str(error.get("message", ""))):
+        value = float(match.group(1))
+        # Gemini reports sub-second waits in milliseconds. Reading 607ms as 607
+        # seconds would stall a run for ten minutes over a delay of half a second.
+        return value / 1000 if match.group(2).lower() == "ms" else value
     return None
 
 
@@ -177,7 +185,9 @@ class OpenAICompatibleProvider:
         }
         headers = {"Authorization": f"Bearer {api_key}"}
 
-        client = self._client or httpx.AsyncClient(base_url=self._base_url)
+        client = self._client or httpx.AsyncClient(
+            base_url=self._base_url, timeout=DEFAULT_TIMEOUT
+        )
         try:
             try:
                 resp = await client.post("/chat/completions", json=payload, headers=headers)

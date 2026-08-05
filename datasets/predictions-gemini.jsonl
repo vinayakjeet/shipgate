@@ -18,3 +18,9 @@
 {"item_id": "sup-018", "prediction": "billing", "expected": "billing", "model": "gemini-flash-latest", "error": ""}
 {"item_id": "sup-019", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
 {"item_id": "sup-020", "prediction": "billing", "expected": "billing", "model": "gemini-flash-latest", "error": ""}
+{"item_id": "sup-021", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-019", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-022", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-021", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-023", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-022", "prediction": "", "expected": "billing", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}

@@ -13,6 +13,69 @@ reconstructed later from memory. Newest entries at the top.
 **Consequences:** what this makes easier or harder later.
 ```
 
+## 2026-08-05: Labels are pre-annotated by a second annotator, then adjudicated
+
+**Context:** the calibration artifact needs human ground truth, and producing 100
+labels unassisted is slow. A second annotator can produce candidates far faster,
+but labels generated wholesale by a model would make the kappa a measure of
+model-versus-model agreement while the README claimed judge-versus-human.
+
+**Decision:** an independent annotator produces candidate intent labels with a
+required borderline flag. Every disagreement and every borderline item is then
+decided by hand. Pass/fail labels for calibration are produced by a human against
+real model predictions. The provenance is stated in the README, because it changes
+what the number means.
+
+**Alternatives considered:** unassisted labeling, which is the strongest option and
+was rejected on time; accepting generated labels as ground truth, which would make
+the central claim false and collapse under the first "who labeled it?" question.
+
+**Consequences:** the kappa measures agreement between the judge and a
+human-adjudicated standard rather than a blank-slate annotator, which is weaker
+and is disclosed as such. It caught two genuine dataset errors that unassisted
+labeling would likely have preserved, since the same person who wrote the labels
+was checking them. Agreement was 97 of 100, which is itself evidence the label
+definitions are reproducible rather than idiosyncratic.
+
+## 2026-08-05: Calibration labels judge real predictions, not a fixed answer
+
+**Context:** the labeling session originally showed a constant prediction, because
+the Milestone 0 target predicts the majority class for every item. That makes the
+correct label mechanically derivable from whether the expected intent happens to
+equal that constant.
+
+**Decision:** a real classifier runs over the dataset first, and the human labels
+whether each genuine prediction is acceptable.
+
+**Alternatives considered:** labeling against the constant, which costs nothing and
+produces a kappa near 1.0 that measures the judge's ability to compare two strings
+rather than its judgement. It would have looked like a completed artifact.
+
+**Consequences:** calibration costs 100 extra provider calls, which on a
+20-per-window free tier is several minutes of waiting. In exchange the 24 items
+marked genuinely ambiguous become the cases that actually determine the kappa,
+which is the only version of this artifact that survives scrutiny.
+
+## 2026-08-05: The dashboard is server-rendered with no frontend build
+
+**Context:** the dashboard shows score over time per dataset and per slice. The
+obvious reach is a small single-page app with a chart library.
+
+**Decision:** one FastAPI route returning hand-written HTML with an inline SVG
+sparkline. No template engine, no chart library, no build step.
+
+**Alternatives considered:** a React or Next.js frontend, which is the default
+choice and wrong here. The page has no interactivity, so a framework would add a
+build pipeline, a deploy target, and a dependency tree to render a table and a
+polyline. A chart library would also mean a CDN fetch on a cold free-tier
+container, which is the worst moment to add a network round trip.
+
+**Consequences:** the page has nothing external to load and works with JavaScript
+disabled. The sparkline is pinned to a fixed 0-to-1 axis rather than auto-scaled,
+because auto-scaling renders a flat 0.86 to 0.87 stretch as a dramatic cliff,
+which is the exact misreading a drift chart must not encourage. Adding real
+interactivity later means revisiting this, and that is the right time to.
+
 ## 2026-08-05: The judge model is an alias, and the run record is what pins it
 
 **Context:** `gemini-2.0-flash` returns a quota error on a new free key and

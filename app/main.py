@@ -6,20 +6,19 @@ from app.config import get_settings
 from app.logging_config import configure_logging
 from app.middleware import RequestContextMiddleware
 from app.otel_bootstrap import setup_otel
-from app.routers import dashboard, demo, health, runs
+from app.routers import dashboard, health, runs
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level)
 
-    app = FastAPI(title="ai-portfolio-template", version="0.1.0")
+    app = FastAPI(title="shipgate", version="0.1.0")
     app.add_middleware(RequestContextMiddleware)
 
     app.include_router(dashboard.router)
     app.include_router(health.router)
     app.include_router(runs.router)
-    app.include_router(demo.router)
 
     setup_otel(app, settings.otel_exporter_otlp_endpoint, settings.otel_exporter_otlp_headers)
 

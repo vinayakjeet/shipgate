@@ -57,7 +57,7 @@ Learning Checkpoint, concept: **offline evals vs online monitoring.**
 
 Filed rather than done, to keep milestone scope honest.
 
-- [ ] **[SHOULD] (15m)** Remove the inherited `/demo/chat` route and its tests.
+- [x] **[SHOULD] (15m)** Remove the inherited `/demo/chat` route and its tests.
   It is chassis scaffolding with no role in ShipGate, and it ships in the public
   deploy. Do this in Milestone 7 with the rest of the polish.
 

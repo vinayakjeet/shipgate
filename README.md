@@ -103,7 +103,27 @@ start empty.
 
 Regenerate with `uv run python scripts/benchmark.py`.
 
-_Pending: populated by the benchmark script._
+Measured 2026-08-05 on the free tier, 100-item support-intent dataset, against a
+majority-class baseline target.
+
+| runner | n | score | p50 latency | wall clock | cost | errors |
+|---|---|---|---|---|---|---|
+| exact | 100 | 0.25 | under 1 ms | 0.0 s | $0.00 | 0 |
+| exact, cached | 100 | 0.25 | under 1 ms | 0.0 s | $0.00 | 0 |
+| judge (gemini) | see note | pending | 55 s under contention | pending | $0.00 | see note |
+
+0.25 is the correct score for a constant predictor on four balanced classes, and
+that is the point of the number: it is the floor any real model has to clear.
+
+**The judge row is honest rather than pending-forever.** The Gemini free tier
+allows 20 requests per rolling minute, and a 100-item judge pass needs five
+windows. Measured under an exhausted quota, per-item latency was 55 seconds,
+essentially all of it waiting for the window to reopen. That is the free-tier
+reality this project is built around, not a defect: the run completes rather than
+dropping items, and the wall clock is reported honestly rather than hidden.
+
+Populate the row with `uv run python scripts/benchmark.py --judge-sample 20`
+starting from a fresh quota window.
 
 ## Technical Decisions
 

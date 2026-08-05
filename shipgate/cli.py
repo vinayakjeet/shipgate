@@ -226,7 +226,7 @@ def label(
     predictions: Annotated[
         Path | None,
         typer.Option("--predictions", help="JSONL of real model predictions to judge."),
-    ] = Path("datasets/predictions-gemini.jsonl"),
+    ] = Path("datasets/predictions-groq.jsonl"),
     target_label: Annotated[
         str | None,
         typer.Option("--target-label", help="Fixed prediction, instead of a predictions file."),

@@ -2,7 +2,7 @@ datasets:
   support-intent:
     id: support-intent
     path: datasets/support-intent.jsonl
-    hash: sha256:221a4446f65ff177c6dc20d26ff023f659ee0ec3fc8f0174a4b9e47450eef84d
+    hash: sha256:83d6a4ac9440861bd15e881e3821ab86f3ad331bfd93869977ffd82b541bc657
     n: 100
     slice_counts:
       intent:account: 25
@@ -14,4 +14,4 @@ datasets:
       lang:hinglish: 40
       len:long: 39
       len:short: 61
-    created_at: '2026-08-04T11:20:34+00:00'
+    created_at: '2026-08-05T12:41:57+00:00'

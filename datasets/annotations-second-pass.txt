@@ -1,0 +1,119 @@
+# Independent second-annotator intent labels for datasets/support-intent.jsonl.
+# Format: id | intent | confidence | competing_intent_or_dash | reason
+# Produced from docs/annotation-prompt.txt. Disagreements and borderline items
+# were adjudicated by hand; see README for how labels were produced.
+#
+# Adjudicated 2026-08-05, three disagreements:
+#   sup-042 -> account    2FA is enumerated under account, and the primary need
+#                         is access. SMS is only the failing mechanism.
+#   sup-073 -> technical  nothing about identity needs changing, the product is
+#                         misbehaving.
+#   sup-094 -> other      kept. The ask is to unsubscribe, and the newsletter is
+#                         not the service. Same rule that makes sup-010 billing
+#                         despite the downtime: classify by the outcome the user
+#                         wants, not by the malfunction blocking it.
+# All three remain borderline, so 24 of 100 items are genuinely ambiguous.
+#
+# ADJUDICATED sup-042
+# ADJUDICATED sup-073
+# ADJUDICATED sup-094
+sup-001 | billing | clear | - | duplicate subscription charge, wants money back
+sup-002 | billing | clear | - | invoice amount disputed against plan price
+sup-003 | billing | clear | - | explicit refund request for duplicate payment
+sup-004 | billing | clear | - | double payment deducted, refund requested
+sup-005 | billing | borderline | technical | money deducted with unconfirmed order; payment failure vs order-flow malfunction
+sup-006 | billing | clear | - | double payment, refund requested (Hindi)
+sup-007 | billing | borderline | account | unwanted renewal charge, but rooted in a cancellation that didn't stick
+sup-008 | billing | clear | - | billed more than advertised price
+sup-009 | billing | clear | - | wants GST invoices; invoices are billing even as a how-to
+sup-010 | billing | clear | - | refund is the ask; downtime is only the justification (rule 1)
+sup-011 | billing | clear | - | declined-but-debited payment failure with txn id
+sup-012 | billing | clear | - | money deducted, wallet not credited
+sup-013 | billing | borderline | account | plan change with balance adjustment; money primary, subscription mgmt secondary
+sup-014 | billing | borderline | technical | coupon is billing, but the complaint is checkout not applying it (malfunction)
+sup-015 | billing | clear | - | missing bill, wants it emailed
+sup-016 | billing | clear | - | charge for un-purchased upgrade, wants reversal
+sup-017 | billing | clear | - | chasing refund status
+sup-018 | billing | clear | - | double debit, reversal requested
+sup-019 | billing | clear | - | billed within advertised free tier
+sup-020 | billing | borderline | technical | repeated payment failures with temp deductions; could be a broken payment flow
+sup-021 | billing | clear | - | invoice correction (company name)
+sup-022 | billing | borderline | account | cancellation plus prorated refund; refund reads as the primary want
+sup-023 | billing | borderline | account | renewal charge despite downgrade; charge dispute vs plan-state issue
+sup-024 | billing | borderline | account | billing address change; billing detail but profile-edit in nature
+sup-025 | billing | clear | - | questioning an extra fee on the order
+sup-026 | technical | clear | - | reproducible crash on settings screen
+sup-027 | technical | clear | - | playback buffering despite good bandwidth
+sup-028 | technical | clear | - | app crashes on launch, Android 14
+sup-029 | technical | borderline | account | login page malfunction (spinner); blocks access but it's a product fault
+sup-030 | technical | clear | - | app closes on open (Hindi)
+sup-031 | technical | clear | - | 502 error on dashboard
+sup-032 | technical | clear | - | silent upload failure above 10 MB
+sup-033 | technical | clear | - | notifications not delivered despite enabled
+sup-034 | technical | clear | - | search relevance regression after update
+sup-035 | technical | clear | - | dark mode rendering bug
+sup-036 | technical | clear | - | CSV export produces empty file
+sup-037 | technical | clear | - | mobile-web sync broken
+sup-038 | technical | clear | - | mobile performance problem
+sup-039 | technical | clear | - | photo upload failing on website
+sup-040 | technical | clear | - | 429 errors under documented limit; API malfunction, not a docs question
+sup-041 | technical | borderline | account | scanner falsely reports permission denied; device-permission bug, "permissions" wording invites account
+sup-042 | account | borderline | technical | 2FA/access is the need, but SMS non-delivery is a malfunction
+sup-043 | technical | clear | - | form data lost on reload
+sup-044 | technical | clear | - | Safari-only blank charts
+sup-045 | technical | clear | - | corrupt PDF downloads
+sup-046 | technical | clear | - | shortcuts broken after release
+sup-047 | technical | clear | - | location detection failing with GPS on
+sup-048 | technical | clear | - | data usage spike after update
+sup-049 | technical | borderline | account | blank page post-login; login succeeded, product misrenders
+sup-050 | technical | clear | - | timezone displayed wrong (UTC vs IST)
+sup-051 | account | borderline | technical | password reset is access, but email non-delivery may be a system fault
+sup-052 | account | clear | - | locked out after failed logins, wants unlock
+sup-053 | account | borderline | technical | reset flow broken (premature expiry), but the need is regaining access
+sup-054 | account | clear | - | email change without access to old address
+sup-055 | account | clear | - | locked account, unlock request (Hindi)
+sup-056 | account | clear | - | unauthorized login, wants account secured
+sup-057 | account | clear | - | permanent deletion request
+sup-058 | account | clear | - | profile mobile number update
+sup-059 | account | clear | - | Google signup not recognized at login
+sup-060 | account | clear | - | duplicate accounts, merge request
+sup-061 | account | borderline | technical | verification blocked, but repeated email non-delivery smells like a fault
+sup-062 | account | borderline | technical | profile identity broken (null username), likely a bug from the update
+sup-063 | account | clear | - | suspension, wants explanation/reinstatement
+sup-064 | account | clear | - | KYC verification pending
+sup-065 | account | borderline | technical | profile photo edit failing; profile task vs malfunction
+sup-066 | account | clear | - | 2FA reset after lost phone
+sup-067 | account | borderline | billing | subscription transfer, but the action is moving it to a new email/identity
+sup-068 | account | clear | - | false-positive suspicious-login block
+sup-069 | account | clear | - | old account recovery
+sup-070 | account | borderline | technical | verification state inconsistent; status issue vs display bug
+sup-071 | account | clear | - | granting admin permissions to team member
+sup-072 | account | clear | - | forgotten password, reset failing (Hindi)
+sup-073 | technical | borderline | account | five-minute session expiry is a malfunction, but it's session/access behavior
+sup-074 | account | clear | - | Apple SSO vs email login mismatch
+sup-075 | account | clear | - | temporary deactivation request
+sup-076 | other | clear | - | office location query
+sup-077 | other | clear | - | support hours query
+sup-078 | other | clear | - | asking for support phone number
+sup-079 | other | clear | - | enterprise partnership/sales inquiry
+sup-080 | other | clear | - | service availability in city
+sup-081 | other | clear | - | praise for the update
+sup-082 | other | clear | - | internship/careers inquiry
+sup-083 | other | clear | - | asking where docs live, not reporting a limit problem
+sup-084 | other | clear | - | referral program question
+sup-085 | other | borderline | billing | student discount is pre-sales, but it's plan-pricing subject matter
+sup-086 | other | clear | - | delivery cities query
+sup-087 | other | clear | - | press contact request
+sup-088 | other | clear | - | privacy policy location
+sup-089 | other | clear | - | feature request (shortcuts)
+sup-090 | other | borderline | billing | pre-sales "do you offer GST invoices", not an actual invoice problem
+sup-091 | other | borderline | account | data-retention policy question, adjacent to deletion but purely informational
+sup-092 | other | clear | - | how to leave an app store review
+sup-093 | other | clear | - | self-hosted enterprise availability
+sup-094 | technical | borderline | other | unsubscribe link broken is a malfunction, but newsletter sits outside the core service
+sup-095 | other | clear | - | Hindi language availability question
+sup-096 | other | clear | - | SLA/docs question, no outage reported
+sup-097 | other | clear | - | job application inquiry
+sup-098 | other | clear | - | pre-purchase demo request
+sup-099 | other | clear | - | company founding date
+sup-100 | other | clear | - | feature request (scheduled reports)

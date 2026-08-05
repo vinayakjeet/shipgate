@@ -23,6 +23,23 @@ from shipgate.datasets.loader import load_jsonl  # noqa: E402
 VALID = {"billing", "technical", "account", "other"}
 
 
+def parse_adjudicated(path: Path) -> set[str]:
+    """Item ids a human has already ruled on, marked `# ADJUDICATED <id>`.
+
+    A settled disagreement is still a disagreement and stays in the record, but it
+    should not keep appearing on the list of things needing a decision. Otherwise
+    the shortlist never shrinks and stops being read.
+    """
+    decided = set()
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip().lstrip("#").strip()
+        if line.upper().startswith("ADJUDICATED"):
+            parts = line.split()
+            if len(parts) >= 2:
+                decided.add(parts[1])
+    return decided
+
+
 def parse(path: Path) -> dict[str, dict]:
     rows: dict[str, dict] = {}
     for lineno, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
@@ -51,14 +68,19 @@ def parse(path: Path) -> dict[str, dict]:
 def main(annotations: Path, dataset: str) -> None:
     items = {i.id: i for i in load_jsonl(dataset)}
     second = parse(annotations)
+    decided = parse_adjudicated(annotations)
 
     missing = sorted(set(items) - set(second))
     extra = sorted(set(second) - set(items))
     shared = sorted(set(items) & set(second))
 
-    disagreements = [i for i in shared if second[i]["intent"] != items[i].expected]
+    all_disagreements = [i for i in shared if second[i]["intent"] != items[i].expected]
+    disagreements = [i for i in all_disagreements if i not in decided]
+    settled = [i for i in all_disagreements if i in decided]
     borderline = [
-        i for i in shared if second[i]["confidence"].startswith("border") and i not in disagreements
+        i
+        for i in shared
+        if second[i]["confidence"].startswith("border") and i not in disagreements
     ]
 
     print(f"dataset items      : {len(items)}")
@@ -68,9 +90,11 @@ def main(annotations: Path, dataset: str) -> None:
     if extra:
         print(f"unknown ids        : {len(extra)} -> {', '.join(extra[:10])}")
     print()
-    agreed = len(shared) - len(disagreements)
+    agreed = len(shared) - len(all_disagreements)
     agreement = agreed / len(shared) if shared else 0.0
     print(f"raw agreement      : {agreement:.0%} ({agreed}/{len(shared)})")
+    if settled:
+        print(f"already adjudicated: {len(settled)} -> {', '.join(settled)}")
     print(f"needs your decision: {len(disagreements)} disagreements + {len(borderline)} borderline")
     print()
 

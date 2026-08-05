@@ -7,6 +7,7 @@ import time
 from llm import ChatClient, ChatMessage, ProviderClientError, ProviderConfigError, ProviderError
 from shipgate.runners.rubrics import RUBRIC_V1, Rubric
 from shipgate.targets import Target
+from shipgate.tracing import get_tracer
 from shipgate.types import DatasetItem, ItemResult
 
 # Judges wrap JSON in code fences no matter how firmly the prompt says not to.
@@ -98,8 +99,27 @@ class JudgeRunner:
             ChatMessage(role="user", content=prompt),
         ]
         kwargs = {"model": self._model} if self._model else {}
-        response = await self._client.complete(self._provider, messages, **kwargs)
-        return parse_verdict(response.text)
+
+        with get_tracer().start_as_current_span("shipgate.judge") as span:
+            span.set_attribute("provider", self._provider)
+            span.set_attribute("rubric_version", self.rubric.version)
+
+            response = await self._client.complete(self._provider, messages, **kwargs)
+
+            # The resolved model, not the one requested. With an alias like
+            # gemini-flash-latest those differ, and the resolved one is what
+            # actually produced the verdict.
+            span.set_attribute("model", response.model)
+            if response.tokens_in is not None:
+                span.set_attribute("tokens_in", response.tokens_in)
+            if response.tokens_out is not None:
+                span.set_attribute("tokens_out", response.tokens_out)
+            if response.cost_usd is not None:
+                span.set_attribute("cost_usd", response.cost_usd)
+
+            score, reason = parse_verdict(response.text)
+            span.set_attribute("verdict", "pass" if score == 1.0 else "fail")
+            return score, reason
 
     async def score_item(self, item: DatasetItem, target: Target) -> ItemResult:
         started = time.monotonic()

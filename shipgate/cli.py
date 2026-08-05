@@ -30,6 +30,7 @@ from shipgate.scoring import (
 )
 from shipgate.store import db
 from shipgate.targets import StubTarget
+from shipgate.tracing import setup_tracing, shutdown_tracing
 from shipgate.types import RunRecord
 
 app = typer.Typer(add_completion=False, help="Eval datasets, runners, and the CI gate.")
@@ -39,8 +40,9 @@ RUNNERS = {"exact": ExactMatchRunner}
 
 @app.callback()
 def main() -> None:
-    """Keeps subcommand mode on even while only `run` exists, so the command
-    name stays stable as register, label, and calibrate land."""
+    """Enables tracing when an OTLP endpoint is configured, and keeps subcommand
+    mode on so command names stay stable as more of them land."""
+    setup_tracing()
 
 
 def _git_sha() -> str:
@@ -292,6 +294,11 @@ def label(
     )
 
 
+def _flush_tracing() -> None:
+    with shutdown_tracing():
+        pass
+
+
 def _emit_action_outputs(outcome, run_id: str) -> None:
     """Write step outputs when running inside GitHub Actions.
 
@@ -410,6 +417,11 @@ def gate(
         summary_path.write_text(summary + "\n", encoding="utf-8")
 
     _emit_action_outputs(outcome, record.run_id)
+
+    # BatchSpanProcessor exports on a timer and this process is about to
+    # exit, so without an explicit flush the trace of a failing gate, which
+    # is the one worth having, dies queued.
+    _flush_tracing()
 
     # Only a real regression blocks. A missing baseline or a run full of provider
     # errors exits zero and complains, because blocking on infrastructure trains

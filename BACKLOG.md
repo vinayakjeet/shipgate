@@ -273,23 +273,24 @@ Learning Checkpoint, concept: **judge validity.**
 
 Goal: ShipGate runs unattended nightly and is adoptable by the other projects.
 
-- [ ] **M6.1 [MUST] (60m)** Publish the consumer contract: a `shipgate.yaml`
+- [x] **M6.1 [MUST] (60m)** Publish the consumer contract: a `shipgate.yaml`
   template, the composite action pinned to a tag, and a short adoption guide.
   Tollgate does not exist until Aug 10, so wiring each gated project is a task in
   that project's own backlog rather than this one (see DECISIONS.md).
   *Acceptance:* a second repo can adopt the gate by copying one config file and
   one workflow block. Proven by ShipGate self-gating in M4.5.
   *Test:* `tests/gate/test_action_contract.py::test_template_matches_action_inputs`
-- [ ] **M6.2 [MUST] (45m)** Nightly cron workflow across all registered
+  *Delivered:* `docs/ADOPTING.md` plus `action/action.yml`.
+- [x] **M6.2 [MUST] (45m)** Nightly cron workflow across all registered
   datasets, writing runs tagged `trigger=cron`. The brief lists nightly cron
   under MUST, and it is free on a public repo.
   *Acceptance:* two consecutive green nights.
   *Test:* `tests/gate/test_cron_config.py::test_schedule_valid`
-- [ ] **M6.3 [SHOULD] (45m)** Failure notification (open a GitHub issue on cron
+- [x] **M6.3 [SHOULD] (45m)** Failure notification (open a GitHub issue on cron
   failure) so a silent nightly break is visible.
   *Acceptance:* a forced failure opens exactly one issue, not one per dataset.
   *Test:* `tests/gate/test_notify.py::test_single_issue_per_failure`
-- [ ] **M6.4 [MUST] (30m)** Spanlight instrumentation: emit `shipgate.run`,
+- [x] **M6.4 [MUST] (30m)** Spanlight instrumentation: emit `shipgate.run`,
   `shipgate.item`, and `shipgate.judge` spans per the SPEC.md attribute table.
   *Acceptance:* spans visible in Grafana with correct attributes.
   *Test:* `tests/otel/test_spans.py::test_span_attributes`

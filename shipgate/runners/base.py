@@ -4,7 +4,10 @@ import asyncio
 import time
 from typing import Protocol, runtime_checkable
 
+from opentelemetry.trace import Status, StatusCode
+
 from shipgate.targets import Target
+from shipgate.tracing import get_tracer
 from shipgate.types import DatasetItem, ItemResult
 
 
@@ -81,6 +84,7 @@ async def execute_run(
     """
     target_fingerprint = getattr(target, "fingerprint", getattr(target, "name", "unknown"))
     semaphore = asyncio.Semaphore(max(1, concurrency))
+    tracer = get_tracer()
 
     async def score_one(item: DatasetItem) -> ItemResult:
         key = cache_key(
@@ -90,31 +94,66 @@ async def execute_run(
             target_fingerprint=target_fingerprint,
         )
 
-        if cache is not None:
-            cached = await cache.get(key)
-            if cached is not None:
-                return cached.model_copy(update={"cache_hit": True})
+        with tracer.start_as_current_span("shipgate.item") as span:
+            span.set_attribute("item_id", item.id)
+            span.set_attribute("slices", ",".join(item.slices))
 
-        started = time.monotonic()
-        try:
-            async with semaphore:
-                result = await runner.score_item(item, target)
-        except Exception as exc:  # noqa: BLE001 - one bad item must not kill the run
-            return ItemResult(
-                item_id=item.id,
-                output="",
-                score=0.0,
-                slices=item.slices,
-                latency_ms=(time.monotonic() - started) * 1000,
-                error=f"{type(exc).__name__}: {exc}",
-            )
+            if cache is not None:
+                cached = await cache.get(key)
+                if cached is not None:
+                    span.set_attribute("cache_hit", True)
+                    span.set_attribute("score", cached.score)
+                    return cached.model_copy(update={"cache_hit": True})
+            span.set_attribute("cache_hit", False)
 
-        # Errors are never cached. A rate limit or a parse failure is a property
-        # of that moment, not of the input, and caching it would make one bad
-        # minute permanent.
-        if cache is not None and result.error is None:
-            await cache.put(key, result)
-        return result
+            started = time.monotonic()
+            try:
+                async with semaphore:
+                    result = await runner.score_item(item, target)
+            except Exception as exc:  # noqa: BLE001 - one bad item must not kill the run
+                latency_ms = (time.monotonic() - started) * 1000
+                span.set_attribute("latency_ms", latency_ms)
+                span.set_attribute("error", f"{type(exc).__name__}: {exc}")
+                span.set_status(Status(StatusCode.ERROR, str(exc)))
+                return ItemResult(
+                    item_id=item.id,
+                    output="",
+                    score=0.0,
+                    slices=item.slices,
+                    latency_ms=latency_ms,
+                    error=f"{type(exc).__name__}: {exc}",
+                )
 
-    # gather preserves input order, so results still line up with items.
-    return list(await asyncio.gather(*(score_one(item) for item in items)))
+            span.set_attribute("score", result.score)
+            if result.latency_ms is not None:
+                span.set_attribute("latency_ms", result.latency_ms)
+            if result.error:
+                # A recorded error is still a failed item, so the span says so
+                # even though the run continued.
+                span.set_attribute("error", result.error)
+                span.set_status(Status(StatusCode.ERROR, result.error))
+
+            # Errors are never cached. A rate limit or a parse failure is a
+            # property of that moment, not of the input, and caching it would
+            # make one bad minute permanent.
+            if cache is not None and result.error is None:
+                await cache.put(key, result)
+            return result
+
+    with tracer.start_as_current_span("shipgate.run") as run_span:
+        run_span.set_attribute("runner", runner.name)
+        run_span.set_attribute("runner_fingerprint", runner.fingerprint)
+        run_span.set_attribute("target", str(target_fingerprint))
+        run_span.set_attribute("dataset_hash", dataset_hash)
+        run_span.set_attribute("n", len(items))
+        run_span.set_attribute("concurrency", max(1, concurrency))
+
+        # gather preserves input order, so results still line up with items.
+        results = list(await asyncio.gather(*(score_one(item) for item in items)))
+
+        errors = sum(1 for r in results if r.error)
+        run_span.set_attribute("error_count", errors)
+        run_span.set_attribute("cache_hits", sum(1 for r in results if r.cache_hit))
+        if results:
+            run_span.set_attribute("score", sum(r.score for r in results) / len(results))
+        return results

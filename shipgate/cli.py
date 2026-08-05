@@ -10,7 +10,7 @@ from typing import Annotated
 import typer
 
 from shipgate.cache import PostgresResultCache
-from shipgate.calibration.labeling import LabelStore, remaining
+from shipgate.calibration.labeling import LabelStore, load_predictions, remaining
 from shipgate.config import get_settings
 from shipgate.datasets.diff import diff_files
 from shipgate.datasets.hashing import content_hash
@@ -223,9 +223,14 @@ def label(
     labels_path: Annotated[
         Path, typer.Option("--labels", help="Where labels are written.")
     ] = Path("datasets/labels.jsonl"),
+    predictions: Annotated[
+        Path | None,
+        typer.Option("--predictions", help="JSONL of real model predictions to judge."),
+    ] = Path("datasets/predictions-gemini.jsonl"),
     target_label: Annotated[
-        str, typer.Option("--target-label", help="What the model under test predicted.")
-    ] = "billing",
+        str | None,
+        typer.Option("--target-label", help="Fixed prediction, instead of a predictions file."),
+    ] = None,
     limit: Annotated[
         int, typer.Option("--limit", help="Stop after this many, for short sittings.")
     ] = 0,
@@ -244,12 +249,25 @@ def label(
         raise typer.Exit(code=2) from exc
 
     dataset_hash = content_hash(items)
+
+    # Prefer real predictions. Labeling against a fixed label is mechanical, since
+    # the answer is then just whether expected equals that label, and a kappa
+    # computed from it measures the judge's string comparison rather than its
+    # judgement.
+    predicted: dict[str, str] = {}
+    if target_label is None:
+        try:
+            predicted = load_predictions(predictions)
+        except FileNotFoundError as exc:
+            typer.secho(str(exc), fg=typer.colors.RED, err=True)
+            raise typer.Exit(code=2) from exc
+
     store_file = LabelStore(labels_path)
     labeled = store_file.load()
-    todo = remaining(items, labeled)
+    todo = [i for i in remaining(items, labeled) if target_label or i.id in predicted]
 
     if not todo:
-        typer.secho(f"all {len(items)} items already labeled", fg=typer.colors.GREEN)
+        typer.secho(f"all {len(labeled)} available items already labeled", fg=typer.colors.GREEN)
         raise typer.Exit(code=0)
 
     typer.echo(f"{len(labeled)} labeled, {len(todo)} remaining. Ctrl-C is safe, nothing is lost.")
@@ -264,7 +282,7 @@ def label(
         typer.echo(f"{item.id}  ({', '.join(item.slices)})")
         typer.echo(f"\n  ticket:   {item.input.get('prompt', '')}")
         typer.echo(f"  expected: {item.expected}")
-        typer.echo(f"  model:    {target_label}\n")
+        typer.echo(f"  model:    {target_label or predicted[item.id]}\n")
 
         answer = typer.prompt("  correct?", default="p").strip().lower()
         if answer in {"q", "quit"}:

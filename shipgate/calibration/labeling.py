@@ -48,6 +48,29 @@ class LabelStore:
             fh.flush()
 
 
+def load_predictions(path: str | Path) -> dict[str, str]:
+    """Model predictions to be labeled, as {item_id: prediction}.
+
+    Items whose prediction failed are excluded rather than shown as empty. Asking
+    a human to judge whether a rate-limit error is an acceptable answer wastes the
+    only scarce resource in the process.
+    """
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"no predictions at {path}. Run scripts/predict.py first, or pass "
+            "--target-label to label against a fixed prediction."
+        )
+    predictions: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if row.get("prediction"):
+            predictions[row["item_id"]] = row["prediction"]
+    return predictions
+
+
 def remaining(items: list[DatasetItem], labeled: dict[str, str]) -> list[DatasetItem]:
     """Items still needing a label, in dataset order.
 

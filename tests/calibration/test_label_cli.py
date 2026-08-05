@@ -59,7 +59,7 @@ def test_cli_labels_items_from_stdin(tmp_path):
     result = runner.invoke(
         app,
         ["label", "--dataset", DATASET, "--labels", str(labels_file),
-         "--limit", "3", "--no-store"],
+         "--limit", "3", "--no-store", "--target-label", "billing"],
         input="p\nf\np\n",
     )
     assert result.exit_code == 0, result.output
@@ -76,7 +76,7 @@ def test_cli_never_shows_the_judge_verdict(tmp_path):
     result = runner.invoke(
         app,
         ["label", "--dataset", DATASET, "--labels", str(tmp_path / "l.jsonl"),
-         "--limit", "1", "--no-store"],
+         "--limit", "1", "--no-store", "--target-label", "billing"],
         input="p\n",
     )
     lowered = result.output.lower()
@@ -117,6 +117,8 @@ def test_cli_reports_when_everything_is_labeled(tmp_path):
         store.append(item.id, "pass", "sha256:x")
 
     result = runner.invoke(
-        app, ["label", "--dataset", DATASET, "--labels", str(labels_file), "--no-store"]
+        app,
+        ["label", "--dataset", DATASET, "--labels", str(labels_file), "--no-store",
+         "--target-label", "billing"],
     )
     assert "already labeled" in result.output

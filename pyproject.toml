@@ -17,6 +17,7 @@ dependencies = [
     "opentelemetry-sdk>=1.28",
     "opentelemetry-exporter-otlp-proto-http>=1.28",
     "opentelemetry-instrumentation-fastapi>=0.49b0",
+    "python-dotenv>=1.2.2",
 ]
 
 [dependency-groups]

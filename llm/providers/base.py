@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import os
+import re
 from collections.abc import Callable
 from typing import Protocol
 
@@ -33,6 +35,89 @@ def default_usage_parser(payload: dict) -> tuple[int | None, int | None]:
     """Standard OpenAI usage shape: {"usage": {"prompt_tokens", "completion_tokens"}}."""
     usage = payload.get("usage") or {}
     return usage.get("prompt_tokens"), usage.get("completion_tokens")
+
+
+_RETRY_IN_SECONDS = re.compile(r"retry in ([\d.]+)\s*s", re.IGNORECASE)
+
+
+def parse_retry_after(resp: httpx.Response) -> float | None:
+    """How long to wait after a 429, from wherever the provider chose to put it.
+
+    Three places, in order of reliability:
+
+    1. The `Retry-After` header, which is the standard and which Gemini does not
+       send.
+    2. A `google.rpc.RetryInfo` entry in `error.details`, as `retryDelay: "48s"`.
+    3. The human-readable error message: "Please retry in 48.63971551s."
+
+    Falling back through all three matters more than it looks. Without a value the
+    throttle uses a short default cooldown, so a limit that needs 49 seconds gets
+    retried after 5, fails, and burns quota indefinitely without ever succeeding.
+    Free tiers are exactly where this happens.
+    """
+    header = resp.headers.get("Retry-After")
+    if header:
+        try:
+            return float(header)
+        except ValueError:
+            pass
+
+    try:
+        payload = resp.json()
+    except (ValueError, json.JSONDecodeError):
+        return None
+
+    # Gemini wraps its error object in a single-element list.
+    if isinstance(payload, list):
+        payload = payload[0] if payload else {}
+    if not isinstance(payload, dict):
+        return None
+
+    # `error` is an object in Google's shape but a bare string in plenty of
+    # others, so it cannot be assumed to have fields.
+    error = payload.get("error")
+    if not isinstance(error, dict):
+        return None
+
+    for detail in error.get("details") or []:
+        if not isinstance(detail, dict):
+            continue
+        if detail.get("@type", "").endswith("RetryInfo"):
+            delay = str(detail.get("retryDelay", "")).rstrip("s")
+            try:
+                return float(delay)
+            except ValueError:
+                continue
+
+    if match := _RETRY_IN_SECONDS.search(str(error.get("message", ""))):
+        return float(match.group(1))
+    return None
+
+
+def total_aware_usage_parser(payload: dict) -> tuple[int | None, int | None]:
+    """Usage parser for providers that bill tokens absent from the itemised fields.
+
+    Gemini's OpenAI-compatible layer reports reasoning tokens in `total_tokens`
+    only. A real response looked like prompt=2, completion=9, total=197: the model
+    spent 186 tokens thinking, and reading only the itemised fields undercounts
+    the run by roughly eighteen times.
+
+    So output is derived as total minus prompt whenever that exceeds the reported
+    completion count. Overstating output slightly is the safe direction to be
+    wrong in for a benchmark table and a cost ceiling.
+    """
+    usage = payload.get("usage") or {}
+    prompt = usage.get("prompt_tokens")
+    completion = usage.get("completion_tokens")
+    total = usage.get("total_tokens")
+
+    if prompt is None or total is None:
+        return prompt, completion
+
+    derived = total - prompt
+    if completion is None or derived > completion:
+        return prompt, derived
+    return prompt, completion
 
 
 class OpenAICompatibleProvider:
@@ -103,9 +188,9 @@ class OpenAICompatibleProvider:
                 await client.aclose()
 
         if resp.status_code == 429:
-            retry_after_header = resp.headers.get("Retry-After")
-            retry_after = float(retry_after_header) if retry_after_header else None
-            raise RateLimitError(f"{self.name}: rate limited", retry_after=retry_after)
+            raise RateLimitError(
+                f"{self.name}: rate limited", retry_after=parse_retry_after(resp)
+            )
         if resp.status_code >= 500:
             raise ProviderError(f"{self.name}: server error {resp.status_code}")
         if resp.status_code >= 400:

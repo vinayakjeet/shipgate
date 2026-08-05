@@ -13,6 +13,66 @@ reconstructed later from memory. Newest entries at the top.
 **Consequences:** what this makes easier or harder later.
 ```
 
+## 2026-08-05: The judge model is an alias, and the run record is what pins it
+
+**Context:** `gemini-2.0-flash` returns a quota error on a new free key and
+`gemini-2.5-flash` is retired for new users. The working option is
+`gemini-flash-latest`, which is an alias that currently resolves to
+gemini-3.6-flash and will move without warning.
+
+**Decision:** use `gemini-flash-latest`, and rely on the run record to pin what a
+score means. Every run stores the model string, the rubric version, and the
+dataset hash.
+
+**Alternatives considered:** pinning a concrete version, which is what an eval
+system should normally do, but every concrete free-tier version tested was either
+exhausted or retired; using `gemini-3-flash-preview`, which works but carries no
+stability promise either.
+
+**Consequences:** the judge model can change under a stored baseline, and a silent
+model change looks exactly like a regression. The mitigation is partial and worth
+stating plainly: the alias is recorded, so a jump is visible in the run history,
+but the alias does not resolve to a version in the API response, so the exact
+model behind a historical score is not recoverable. If Gemini ships a stable
+pinned free-tier model, switch to it and record the change here.
+
+## 2026-08-05: Rate limit delays are parsed from the error body, not just the header
+
+**Context:** Gemini returns 429 with no `Retry-After` header at all. The wait is
+stated only in prose inside the JSON error, and separately in a
+`google.rpc.RetryInfo` detail. Measured delays ranged from 20 to 49 seconds.
+
+**Decision:** `parse_retry_after` falls through three sources in order: the
+standard header, the RetryInfo detail, then a regex over the message text.
+
+**Alternatives considered:** trusting the header alone, which is what the chassis
+did. Without a value the throttle used its 5 second default, so a limit needing 49
+seconds got retried after 5, failed, and consumed quota indefinitely without ever
+succeeding. Hardcoding a longer default was rejected because it slows every
+provider that reports honestly.
+
+**Consequences:** the throttle now waits what the provider actually asks for,
+verified at 20 seconds against a live 429. The parser has to tolerate Gemini
+wrapping its error object in a single-element list and other providers returning
+`error` as a bare string.
+
+## 2026-08-05: Token counts are derived from total, not the itemised fields
+
+**Context:** a real Gemini response reported prompt 2, completion 9, total 197.
+The 186 missing tokens are reasoning tokens, billed but absent from both itemised
+fields.
+
+**Decision:** the gemini provider uses `total_aware_usage_parser`, which derives
+output as total minus prompt whenever that exceeds the reported completion count.
+Selected per provider in `quotas.yaml`.
+
+**Alternatives considered:** reading the itemised fields, which undercounts by
+roughly eighteen times and would make the benchmark table in M7 fiction.
+
+**Consequences:** output tokens may be slightly overstated for providers that
+report a padded total, which is the safe direction for a cost ceiling. This is
+what the chassis `usage_parser` hook was designed for, and it earned itself here.
+
 ## 2026-08-04: Render start command calls the venv interpreter, not `uv run`
 
 **Context:** deploys built successfully but Render reported "Port scan timeout

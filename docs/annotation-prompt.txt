@@ -1,0 +1,135 @@
+You are annotating a customer-support intent dataset. I need an independent
+second opinion on labels, which I will then adjudicate myself.
+
+TASK: for each ticket, assign exactly one intent from this closed set:
+
+- billing    money: charges, refunds, invoices, payment failures, coupons, plan pricing
+- technical  the product malfunctioning: crashes, errors, sync, upload, rendering, performance
+- account    identity and access: passwords, login, 2FA, profile, verification, deletion, permissions
+- other      anything not a problem with the service: sales, careers, press, docs, feature requests, praise
+
+RULES
+
+1. Judge the user's PRIMARY need, not every topic mentioned. "Refund me, and the app
+   also crashes" is billing, because the refund is what they want.
+2. Tickets are English, Hindi, or code-mixed Hinglish. Language is irrelevant to intent.
+3. Some tickets genuinely sit between two categories. Do NOT force confidence.
+   Mark those and name the competing category. These are the ones I care most about.
+4. Do not consider how hard the ticket is to answer, only what it is about.
+
+OUTPUT: one line per ticket, pipe-separated, no prose before or after:
+
+id | intent | confidence | competing_intent_or_dash | one-line reason
+
+confidence is `clear` or `borderline`. Use `borderline` whenever a reasonable
+annotator could pick the other category, and put that category in the next field.
+Use `-` for competing_intent when confidence is clear.
+
+Example:
+sup-001 | billing | clear | - | charged twice, wants the money back
+sup-017 | account | borderline | billing | subscription cancelled but a charge appeared, access vs money
+
+Be genuinely willing to disagree with nothing, and genuinely willing to mark
+borderline. An annotation pass where everything is `clear` is not useful to me.
+
+TICKETS
+sup-001 | I was charged twice for my subscription this month.
+sup-002 | My invoice shows the wrong amount for October, it says 4999 but the plan is 2999.
+sup-003 | Please refund the duplicate payment on my card ending 4412.
+sup-004 | Mera payment do baar cut gaya hai, please refund kar dijiye.
+sup-005 | Bhai maine UPI se pay kiya tha but order confirm nahi hua aur paise bhi kat gaye.
+sup-006 | मेरा भुगतान दो बार हो गया है, कृपया वापस करें।
+sup-007 | Subscription auto renew ho gaya, maine to cancel kiya tha last month.
+sup-008 | Why was I billed 999 when the website clearly advertises 499 for the annual plan?
+sup-009 | GST invoice chahiye tha last three months ka, kaise download karun?
+sup-010 | I need a refund, the service was down for a week and I still got charged in full.
+sup-011 | Card was declined but the amount was deducted from my bank, transaction id TXN99182.
+sup-012 | Paisa kat gaya lekin wallet me credit nahi hua.
+sup-013 | Can you switch me from monthly to annual and adjust the remaining balance?
+sup-014 | Coupon SAVE20 apply nahi ho raha checkout pe.
+sup-015 | मुझे पिछले महीने का बिल नहीं मिला, कृपया ईमेल पर भेजिए।
+sup-016 | Charged for a plan I never upgraded to, please reverse it immediately.
+sup-017 | Refund status kya hai? Das din ho gaye request kiye hue.
+sup-018 | Double debit hua hai, ek transaction reverse kar dijiye please.
+sup-019 | Your pricing page says the free tier includes 100 requests but I was billed at 60.
+sup-020 | Payment failed three times but each time money was deducted temporarily.
+sup-021 | Invoice me company name galat hai, correct karwana hai.
+sup-022 | I want to cancel my subscription and get a prorated refund for the unused days.
+sup-023 | Renewal charge aaya but maine to plan downgrade kiya tha.
+sup-024 | बिलिंग पता बदलना है, कहाँ से करूँ?
+sup-025 | Extra convenience fee charge kyun hua order pe?
+sup-026 | The app crashes every time I open the settings screen.
+sup-027 | Video playback keeps buffering even on a 200 Mbps connection.
+sup-028 | App khulte hi band ho jata hai, Android 14 pe.
+sup-029 | Login page pe infinite loading spinner aa raha hai subah se.
+sup-030 | एप्लिकेशन खोलते ही बंद हो जाता है।
+sup-031 | Getting a 502 error on the dashboard for the last two hours.
+sup-032 | File upload fails silently for anything above 10 MB, no error is shown.
+sup-033 | Notification aa hi nahi rahe, settings me enabled hai phir bhi.
+sup-034 | Search results are completely irrelevant since the last update.
+sup-035 | Dark mode toggle karne pe text invisible ho jata hai.
+sup-036 | The export to CSV button downloads an empty file every time.
+sup-037 | Sync between phone and web is broken, changes on mobile never appear.
+sup-038 | Website mobile pe bahut slow hai, desktop pe theek chalti hai.
+sup-039 | वेबसाइट पर फोटो अपलोड नहीं हो रही है।
+sup-040 | The API returns 429 even though I am well under the documented rate limit.
+sup-041 | Camera permission diya hua hai but scanner still bolta hai permission denied.
+sup-042 | The two factor authentication code never arrives over SMS.
+sup-043 | Page reload karne pe saara form data chala jata hai.
+sup-044 | Charts render blank on Safari but work fine on Chrome.
+sup-045 | PDF download corrupt aa raha hai, open hi nahi ho raha.
+sup-046 | Keyboard shortcuts stopped working after the December release.
+sup-047 | Location detect nahi ho raha app me, GPS on hai.
+sup-048 | Data usage has spiked massively since the last app update.
+sup-049 | लॉगिन के बाद पेज खाली दिख रहा है।
+sup-050 | Timezone galat show ho raha hai, IST ki jagah UTC dikha raha hai.
+sup-051 | I cannot reset my password, the email never arrives.
+sup-052 | My account got locked after three failed login attempts, please unlock it.
+sup-053 | Password reset link expire ho jata hai use karne se pehle hi.
+sup-054 | Registered email change karna hai, purane wale ka access nahi hai.
+sup-055 | मेरा खाता लॉक हो गया है, कृपया इसे खोलिए।
+sup-056 | Someone else logged into my account from another city, I need help securing it.
+sup-057 | Delete my account and all associated data permanently.
+sup-058 | Mobile number update karna hai profile me.
+sup-059 | I signed up with Google but now it says no account exists for this email.
+sup-060 | Do accounts ban gaye hain same email se, merge kar sakte ho?
+sup-061 | Verification email spam me bhi nahi aa raha, paanch baar resend kiya.
+sup-062 | My username shows as null after the profile update.
+sup-063 | Account suspended without any reason, I need an explanation.
+sup-064 | KYC documents upload kiye the, abhi tak verify nahi hue.
+sup-065 | प्रोफ़ाइल फोटो बदल नहीं पा रहा हूँ।
+sup-066 | Two factor authentication reset karna hai, phone kho gaya hai.
+sup-067 | Can I transfer my subscription to a different email address?
+sup-068 | A login attempt was blocked saying suspicious activity, but it was me.
+sup-069 | Purana account recover karna hai, 2019 me banaya tha.
+sup-070 | Email verification is done but the account still shows an unverified badge.
+sup-071 | Team member ko admin access dena hai, option nahi mil raha.
+sup-072 | मैं अपना पासवर्ड भूल गया हूँ और रीसेट काम नहीं कर रहा।
+sup-073 | My login session expires every five minutes, which is extremely annoying.
+sup-074 | Sign in with Apple use kiya tha, ab email se login nahi ho raha.
+sup-075 | Deactivate my account temporarily, I will be back in three months.
+sup-076 | Do you have an office in Bangalore that I can visit?
+sup-077 | What are your customer support working hours on weekends?
+sup-078 | Aapka support number kya hai? Call karna hai.
+sup-079 | I want to partner with your company for a bulk enterprise deal.
+sup-080 | क्या आपकी सेवा मेरे शहर में उपलब्ध है?
+sup-081 | Just wanted to say the new update looks great, well done to the team.
+sup-082 | Internship opportunities hain kya engineering team me?
+sup-083 | Where can I find your API documentation and the rate limit policy?
+sup-084 | Referral program kaise kaam karta hai?
+sup-085 | Is there a student discount available for the annual plan?
+sup-086 | Aap log kaunse cities me deliver karte ho?
+sup-087 | I am writing an article about your product, who handles press queries?
+sup-088 | आपकी गोपनीयता नीति कहाँ मिलेगी?
+sup-089 | Feature request, please add keyboard shortcuts for bulk actions.
+sup-090 | Kya aap GST invoice provide karte ho business accounts ke liye?
+sup-091 | How long do you retain user data after account deletion?
+sup-092 | App store pe review kaise chhodun?
+sup-093 | Do you offer a self hosted version for enterprises?
+sup-094 | Newsletter unsubscribe karna hai, link kaam nahi kar raha.
+sup-095 | क्या आपका ऐप हिंदी में उपलब्ध है?
+sup-096 | What is your uptime SLA for paid customers?
+sup-097 | Job openings ke liye kahan apply karun?
+sup-098 | Can I get a demo of the enterprise dashboard before purchasing?
+sup-099 | Aapki company kab start hui thi?
+sup-100 | Please add a feature to schedule reports weekly over email.

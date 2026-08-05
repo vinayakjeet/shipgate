@@ -317,5 +317,5 @@ the plan changes.
 | A4 | Calibration target is kappa >= 0.6 (substantial agreement) after tuning. Below that, the judge is not trusted to gate. | Defines success for the primary Proof Artifact. |
 | A5 | Neon free tier autosuspends. Cold starts on the dashboard are accepted and documented, not engineered around. | Avoids burning budget on a non-problem. |
 | A6 | Dashboard is server-rendered HTML from the existing FastAPI app. No separate frontend build, no SPA. | Saves ~4h even at full budget, spent on evals instead. |
-| A7 | Calibration is done on one dataset (Tollgate's), ~100 items, single annotator. | Single-annotator kappa is judge vs human, not inter-human. Stated openly in the README. |
+| A7 | Calibration is done on one dataset, ~100 items, single annotator, using pre-annotation with human adjudication of every disagreement and borderline case. | Single-annotator kappa is judge vs human, not inter-human, and the standard is human-adjudicated rather than unassisted. Both are stated openly in the README, since they change what the number means. |
 | A8 | The public repo contains no secrets. DB URL and API keys live only in `.env` locally, GitHub Actions secrets, and Render env vars. | A public repo makes this non-negotiable rather than merely good practice. |

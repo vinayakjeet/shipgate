@@ -38,6 +38,18 @@ _Pending: populated by `shipgate label` then `shipgate calibrate`._
 | v1, naive | tbd | tbd | 100 |
 | v2, criteria-split | tbd | tbd | 100 |
 
+**How the labels were produced.** A second annotator produced candidate intent
+labels independently, and every disagreement and borderline case was then decided
+by hand (`scripts/import_annotations.py` builds that shortlist). Pass/fail labels
+for calibration are mine. This is pre-annotation with human adjudication rather
+than unassisted labeling, which is worth stating because it changes what the kappa
+means: it is agreement between the judge and a human-adjudicated standard, not
+between the judge and a blank-slate annotator.
+
+Single annotator, so this is judge-versus-human agreement and not inter-annotator
+agreement. A second independent human would give a ceiling to compare the judge
+against, and there isn't one here.
+
 **2. A regression, blocked.** Actions run
 [30931868809](https://github.com/vinayakjeet/shipgate/actions/runs/30931868809):
 

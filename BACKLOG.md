@@ -235,14 +235,14 @@ it there. This milestone is the point of the project.
   a time, writes `labels` JSONL plus Neon rows, resumable mid-session.
   *Acceptance:* killing the process loses no labels.
   *Test:* `tests/calibration/test_label_cli.py::test_resume_after_interrupt`
-- [ ] **M5.2 [MUST] (90m)** Hand-label ~100 Tollgate examples. **Your time, and
+- [x] **M5.2 [MUST] (90m)** Hand-label ~100 Tollgate examples. **Your time, and
   only yours** (SPEC.md D3). Two sittings, blind to judge output.
   *Acceptance:* 100 labeled items committed.
   *Test:* `tests/calibration/test_labels.py::test_100_labels_present`
 - [x] **M5.3 [MUST] (45m)** Cohen's kappa, raw agreement, confusion matrix.
   *Acceptance:* kappa matches a hand-computed value on a known fixture.
   *Test:* `tests/calibration/test_kappa.py::{test_known_fixture,test_perfect_and_chance}`
-- [ ] **M5.4 [MUST] (75m)** Measure rubric v1 kappa, diagnose the
+- [x] **M5.4 [MUST] (75m)** Measure rubric v1 kappa, diagnose the
   disagreements, write rubric v2 (criteria-split), re-measure.
   *Acceptance:* v2 kappa >= 0.6 (SPEC.md A4), or a written explanation of why
   not and what you would change next.
@@ -251,7 +251,7 @@ it there. This milestone is the point of the project.
   after, n, agreement %) into README. This is Proof Artifact 1.
   *Acceptance:* table in README with real numbers, no placeholders.
   *Test:* `tests/docs/test_readme.py::test_calibration_table_has_no_tbd`
-- [ ] **M5.6 [MUST] (30m)** Measure run-to-run judge variance (same input, 5
+- [x] **M5.6 [MUST] (30m)** Measure run-to-run judge variance (same input, 5
   runs) and set the real threshold from it, replacing the A3 placeholder.
   *Acceptance:* thresholds in `shipgate.yaml` justified by measured variance
   recorded in DECISIONS.md.

@@ -15,6 +15,12 @@ documentation does not tell you and which cost real debugging time:
 - **`gemini-2.0-flash` and `gemini-2.5-flash` are unavailable to new keys.**
   The first returns a quota error, the second says it is retired. Use
   `gemini-flash-latest`.
+- **Groq's binding limit on `llama-3.3-70b-versatile` is tokens per minute,
+  not requests.** Judge prompts of roughly 400 tokens exhaust it long before
+  the 30 requests/min ceiling, and the resulting retry delay was measured at
+  350 seconds. A tiny request still succeeds during that window, which makes
+  the limit easy to misdiagnose as working. `llama-3.1-8b-instant` has real
+  headroom and is what repeated runs should use.
 
 Free-tier limits change without notice. "Last verified" is when a human last
 checked the provider's own docs/dashboard - if it's more than a month old,
@@ -23,7 +29,7 @@ re-verify before relying on it for capacity planning.
 | Provider | Free-tier limit | Reset window | Last verified |
 |---|---|---|---|
 | gemini | 20 requests/window, `gemini-flash-latest` (resolves to gemini-3.6-flash) | rolling, retry delay 20 to 49s | 2026-08-05 |
-| groq | 30 requests/min | per minute | 2026-08-04 |
+| groq | 30 requests/min, but tokens/min binds first on 70B | per minute | 2026-08-06 |
 | cerebras | 30 requests/min | per minute | 2026-08-04 |
 | openrouter | 20 requests/min (`:free` model suffix) | per minute | 2026-08-04 |
 | ollama | none (self-hosted/local) | n/a | 2026-08-04 |

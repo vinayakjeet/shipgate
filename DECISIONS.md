@@ -13,6 +13,38 @@ reconstructed later from memory. Newest entries at the top.
 **Consequences:** what this makes easier or harder later.
 ```
 
+## 2026-08-06: Thresholds come from measured judge noise, and the judge does not gate
+
+**Context:** the gate shipped with a placeholder threshold of 2 points overall.
+Milestone 5.6 measured what the judge actually does when nothing changes: five
+runs over 20 identical items, same predictions, same rubric.
+
+**Decision:** the exact runner carries the gate. The judge is advisory and does not
+block on its own. Where a judge threshold is needed it is set from measured spread
+rather than intuition.
+
+The measurement: scores of 0.80, 0.75, 0.85, 0.65, 0.75. Mean 0.760, standard
+deviation 0.074, spread 0.200. The judge's own noise floor is twenty points while
+the default threshold was two, so that default would have fired on almost every
+run of an unchanged model.
+
+**Alternatives considered:** keeping the 2 point threshold, which produces a gate
+that fails constantly and is therefore switched off within a week, and a gate
+people bypass is worse than no gate because it also carries false authority.
+Setting the threshold to 0.20 and gating on the judge anyway, which is honest but
+means only catastrophic regressions are detectable, so the gate provides very
+little. Averaging several judge runs per item to shrink the variance, which works
+and costs several times the quota, and is the right move once there is budget.
+
+**Consequences:** the gate remains useful because exact match has zero run-to-run
+variance, and the judge contributes signal without authority. Measured on
+llama-3.1-8b-instant, because the 70B model's free-tier token-per-minute ceiling
+cannot sustain repeated runs, so 0.20 is an upper bound for the cheapest available
+judge rather than a universal figure. A larger judge would likely be steadier.
+Twenty items over five runs establishes the order of magnitude, not a precise
+number. Revisit when a steadier judge is affordable, and re-measure rather than
+assuming it improved.
+
 ## 2026-08-05: Labels are pre-annotated by a second annotator, then adjudicated
 
 **Context:** the calibration artifact needs human ground truth, and producing 100

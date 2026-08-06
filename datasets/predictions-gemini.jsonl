@@ -128,3 +128,5 @@
 {"item_id": "sup-087", "prediction": "", "expected": "other", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
 {"item_id": "sup-082", "prediction": "", "expected": "other", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
 {"item_id": "sup-085", "prediction": "", "expected": "other", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-088", "prediction": "", "expected": "other", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}
+{"item_id": "sup-083", "prediction": "", "expected": "other", "model": "gemini", "error": "RateLimitError: gemini: rate limited"}

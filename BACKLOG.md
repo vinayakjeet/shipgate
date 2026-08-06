@@ -320,6 +320,12 @@ verify it.
   *Acceptance:* the red check, the score delta, and the failing slice are all
   legible.
   *Test:* manual review at 100% zoom.
+  *Deferred 2026-08-06.* The artifact itself exists: Actions run 30931868809 is
+  the Eval workflow concluding `failure` on commit 8d64111, publicly linked from
+  the README along with the verdict summary. A link to a public CI run is stronger
+  evidence than an image, since it can be verified rather than trusted. The
+  screenshot is worth capturing for the Aug 30 video thumbnail and the portfolio
+  case study, which is when it gets reused.
 - [x] **M7.3 [MUST] (45m)** Benchmark table: score, cost, latency, and cache-hit
   per runner type across the Tollgate dataset.
   *Acceptance:* real measured numbers in README.

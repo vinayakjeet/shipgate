@@ -29,14 +29,45 @@ anyone is asked to trust it to block a merge.
 ## Proof
 
 **1. Judge calibration.** Agreement between the LLM judge and 100 hand-labeled
-examples, before and after tuning the rubric.
+examples, across three rubric versions. Regenerate with
+`uv run python scripts/calibrate.py --rubric v3`.
 
-_Pending: populated by `shipgate label` then `shipgate calibrate`._
+| Rubric | Kappa | Agreement | Disagreements | What it measured |
+|---|---|---|---|---|
+| v1, naive | 1.000 | 100% | 0 | nothing, see below |
+| v2, judge blind | 0.861 | 95% | 5 | real judgement |
+| v3, boundaries named | **0.921** | 97% | 3 | real judgement |
 
-| Rubric | Kappa | Agreement | n |
-|---|---|---|---|
-| v1, naive | tbd | tbd | 100 |
-| v2, criteria-split | tbd | tbd | 100 |
+**v1 scoring 1.000 is the finding, not the success.** It was handed both the
+expected intent and the prediction, so agreeing with a human applying strict
+equality is trivial: `==` scores 1.000 on that task. It measured string
+comparison. It is kept as the first row because a perfect score there is the
+signal that the measurement is broken, and that is the more useful thing to
+show.
+
+v2 removes the expected answer, which is the situation in production: no ground
+truth is the entire reason to want a judge. Four of its five disagreements were
+one boundary, where the user's own account state is broken so the human said
+`account` while the judge saw a malfunction and accepted `technical`. v3 names
+that boundary and fixes all four.
+
+**v3 is fitted to the test set.** It was written by reading v2's disagreements
+and then scored on the same hundred items, so 0.921 is optimistic. Confirming it
+needs items the rubric has not seen.
+
+**The judge is too noisy to gate on.** Five runs over 20 identical items, nothing
+changing between them:
+
+| run | 1 | 2 | 3 | 4 | 5 | mean | stdev | spread |
+|---|---|---|---|---|---|---|---|---|
+| score | 0.80 | 0.75 | 0.85 | 0.65 | 0.75 | 0.760 | 0.074 | **0.200** |
+
+The noise floor is 20 points while the gate's default threshold was 2. That
+default would have fired on nearly every run of an unchanged model, and a gate
+that cries wolf gets switched off while still wearing a green check. So the exact
+runner carries the gate and the judge is advisory. Measured on
+`llama-3.1-8b-instant`, because the 70B free tier cannot sustain repeated runs,
+so 0.200 is an upper bound for the cheapest judge rather than a constant.
 
 **How the labels were produced.** A second annotator produced candidate intent
 labels independently, and every disagreement and borderline case was then decided
@@ -118,24 +149,48 @@ Regenerate with `uv run python scripts/benchmark.py`.
 Measured 2026-08-05 on the free tier, 100-item support-intent dataset, against a
 majority-class baseline target.
 
-| runner | n | score | p50 latency | wall clock | cost | errors |
-|---|---|---|---|---|---|---|
-| exact | 100 | 0.25 | under 1 ms | 0.0 s | $0.00 | 0 |
-| exact, cached | 100 | 0.25 | under 1 ms | 0.0 s | $0.00 | 0 |
-| judge (gemini) | see note | pending | 55 s under contention | pending | $0.00 | see note |
+| target / runner | n | score | run-to-run spread | cost | errors |
+|---|---|---|---|---|---|
+| majority-class baseline, exact | 100 | 0.25 | 0 | $0.00 | 0 |
+| llama-3.3-70b, exact | 100 | **0.75** | 0 | $0.00 | 0 |
+| llama-3.3-70b, judge v3 | 100 | 0.74 | see note | $0.00 | 0 |
+| llama-3.3-70b, judge v2 | 100 | 0.78 | see note | $0.00 | 0 |
 
-0.25 is the correct score for a constant predictor on four balanced classes, and
-that is the point of the number: it is the floor any real model has to clear.
+0.25 is the correct score for a constant predictor on four balanced classes. It
+is the floor any real model has to clear, and the reason the classes are balanced
+at 25 each: on a skewed set a do-nothing predictor scores 0.60 and looks
+respectable.
 
-**The judge row is honest rather than pending-forever.** The Gemini free tier
-allows 20 requests per rolling minute, and a 100-item judge pass needs five
-windows. Measured under an exhausted quota, per-item latency was 55 seconds,
-essentially all of it waiting for the window to reopen. That is the free-tier
-reality this project is built around, not a defect: the run completes rather than
-dropping items, and the wall clock is reported honestly rather than hidden.
+The 70B model reaches 0.75, and its errors have structure rather than being
+noise. It over-triages: 19 of its 25 mistakes route to `technical` or `account`,
+reading a broken unsubscribe link and a question about where the docs live as
+technical problems.
 
-Populate the row with `uv run python scripts/benchmark.py --judge-sample 20`
-starting from a fresh quota window.
+| intent | accuracy |
+|---|---|
+| technical | 25/25 |
+| billing | 22/25 |
+| account | 17/25 |
+| other | 11/25 |
+
+**The spread column is the point of the table.** Exact match scores 0.75 and the
+judge scores 0.74, close enough to look interchangeable. They are not. Exact match
+returns the same answer every time; the judge moved 20 points across five runs on
+identical inputs, measured separately on `llama-3.1-8b-instant` because the 70B
+free tier cannot sustain repeats. Two runners agreeing on a number does not make
+them equally trustworthy, and the one worth gating on is the one that does not
+change its mind.
+
+Note also that v2 and v3 score 0.78 and 0.74 while disagreeing with the human 5
+and 3 times respectively. The rubric that scores higher is the less accurate one,
+which is why the calibration table reports kappa rather than score.
+
+**Free-tier limits, measured rather than read from docs.** Gemini allows 20
+requests per rolling minute, and under an exhausted quota per-item latency was 55
+seconds, essentially all of it waiting. Groq's binding limit on the 70B model is
+tokens per minute rather than requests, so 400-token judge prompts exhaust it long
+before the documented request ceiling, and the resulting wait measured 350
+seconds. Both are in [QUOTAS.md](QUOTAS.md).
 
 ## Technical Decisions
 

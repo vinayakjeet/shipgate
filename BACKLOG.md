@@ -247,7 +247,7 @@ it there. This milestone is the point of the project.
   *Acceptance:* v2 kappa >= 0.6 (SPEC.md A4), or a written explanation of why
   not and what you would change next.
   *Test:* `tests/calibration/test_rubric_versions.py::test_v2_beats_v1`
-- [ ] **M5.5 [MUST] (45m)** Publish the calibration table (kappa before and
+- [x] **M5.5 [MUST] (45m)** Publish the calibration table (kappa before and
   after, n, agreement %) into README. This is Proof Artifact 1.
   *Acceptance:* table in README with real numbers, no placeholders.
   *Test:* `tests/docs/test_readme.py::test_calibration_table_has_no_tbd`
@@ -311,7 +311,7 @@ Learning Checkpoint, concept: **refresh policy in practice.**
 Goal: it exists publicly, it is explicable in 90 seconds, and a stranger can
 verify it.
 
-- [ ] **M7.1 [MUST] (60m)** README: Problem, Architecture, Benchmarks, Technical
+- [x] **M7.1 [MUST] (60m)** README: Problem, Architecture, Benchmarks, Technical
   Decisions, What Broke, Run It, all filled.
   *Acceptance:* no TODO placeholders remain.
   *Test:* `tests/docs/test_readme.py::test_no_todo_placeholders`
@@ -320,11 +320,11 @@ verify it.
   *Acceptance:* the red check, the score delta, and the failing slice are all
   legible.
   *Test:* manual review at 100% zoom.
-- [ ] **M7.3 [MUST] (45m)** Benchmark table: score, cost, latency, and cache-hit
+- [x] **M7.3 [MUST] (45m)** Benchmark table: score, cost, latency, and cache-hit
   per runner type across the Tollgate dataset.
   *Acceptance:* real measured numbers in README.
   *Test:* `tests/docs/test_readme.py::test_benchmark_table_present`
-- [ ] **M7.4 [MUST] (45m)** DECISIONS.md complete: threshold choice, rubric
+- [x] **M7.4 [MUST] (45m)** DECISIONS.md complete: threshold choice, rubric
   design, baseline rule, why no SPA, single-annotator caveat.
   *Acceptance:* at least 5 entries in the repo's decision format.
   *Test:* `tests/docs/test_decisions.py::test_min_entries`
@@ -332,7 +332,7 @@ verify it.
   SVG from the SPEC.md mermaid, polish docs prose.
   *Acceptance:* diagram renders in README on github.com.
   *Test:* visual check on the rendered README.
-- [ ] **M7.6 [MUST] (45m)** Six-bullet video script plus clean-browser deploy
+- [x] **M7.6 [MUST] (45m)** Six-bullet video script plus clean-browser deploy
   verification (incognito, cold Render and Neon, timed).
   *Acceptance:* script written, cold-start time recorded honestly in README.
   *Test:* manual, incognito.

@@ -12,3 +12,4 @@ htmlcov/
 .DS_Store
 predict-run.log
 variance.log
+datasets/predictions-gemini.jsonl

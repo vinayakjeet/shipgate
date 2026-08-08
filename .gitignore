@@ -13,3 +13,7 @@ htmlcov/
 predict-run.log
 variance.log
 datasets/predictions-gemini.jsonl
+SPEC.md
+BACKLOG.md
+LEARNING.md
+QUOTAS.md

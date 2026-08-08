@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 from typing import Annotated
 
+import spanlight
 import typer
 
 from shipgate.cache import PostgresResultCache
@@ -30,7 +31,6 @@ from shipgate.scoring import (
 )
 from shipgate.store import db
 from shipgate.targets import StubTarget
-from shipgate.tracing import setup_tracing, shutdown_tracing
 from shipgate.types import RunRecord
 
 app = typer.Typer(add_completion=False, help="Eval datasets, runners, and the CI gate.")
@@ -42,7 +42,7 @@ RUNNERS = {"exact": ExactMatchRunner}
 def main() -> None:
     """Enables tracing when an OTLP endpoint is configured, and keeps subcommand
     mode on so command names stay stable as more of them land."""
-    setup_tracing()
+    spanlight.init(service="shipgate")
 
 
 def _git_sha() -> str:
@@ -312,11 +312,6 @@ def label(
     )
 
 
-def _flush_tracing() -> None:
-    with shutdown_tracing():
-        pass
-
-
 def _emit_action_outputs(outcome, run_id: str) -> None:
     """Write step outputs when running inside GitHub Actions.
 
@@ -374,11 +369,18 @@ def gate(
         raise typer.Exit(code=2) from exc
 
     dataset_hash = content_hash(items)
-    results = asyncio.run(
-        execute_run(
-            RUNNERS[runner](), items, StubTarget(target_label), dataset_hash=dataset_hash
+
+    # The gate run is one session, so a CI failure is one trace to open rather
+    # than a scatter of unrelated spans. Each scored item opens its own session
+    # inside it, which is what keeps one item's failure from being read against
+    # the next item's model call.
+    with spanlight.session() as session_id:
+        results = asyncio.run(
+            execute_run(
+                RUNNERS[runner](), items, StubTarget(target_label), dataset_hash=dataset_hash
+            )
         )
-    )
+    typer.echo(f"session {session_id}")
 
     record = RunRecord(
         run_id=f"r_{uuid.uuid4().hex[:16]}",
@@ -435,11 +437,6 @@ def gate(
         summary_path.write_text(summary + "\n", encoding="utf-8")
 
     _emit_action_outputs(outcome, record.run_id)
-
-    # BatchSpanProcessor exports on a timer and this process is about to
-    # exit, so without an explicit flush the trace of a failing gate, which
-    # is the one worth having, dies queued.
-    _flush_tracing()
 
     # Only a real regression blocks. A missing baseline or a run full of provider
     # errors exits zero and complains, because blocking on infrastructure trains

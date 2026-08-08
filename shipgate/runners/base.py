@@ -4,10 +4,12 @@ import asyncio
 import time
 from typing import Protocol, runtime_checkable
 
+import spanlight
+from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
+from spanlight.attributes import ERROR_TYPE
 
 from shipgate.targets import Target
-from shipgate.tracing import get_tracer
 from shipgate.types import DatasetItem, ItemResult
 
 
@@ -84,7 +86,6 @@ async def execute_run(
     """
     target_fingerprint = getattr(target, "fingerprint", getattr(target, "name", "unknown"))
     semaphore = asyncio.Semaphore(max(1, concurrency))
-    tracer = get_tracer()
 
     async def score_one(item: DatasetItem) -> ItemResult:
         key = cache_key(
@@ -94,17 +95,22 @@ async def execute_run(
             target_fingerprint=target_fingerprint,
         )
 
-        with tracer.start_as_current_span("shipgate.item") as span:
-            span.set_attribute("item_id", item.id)
-            span.set_attribute("slices", ",".join(item.slices))
+        # One session per item, not per gate run. An item is an independent
+        # scoring attempt, so a silent failure in item 42 should be detectable
+        # without the other ninety-nine masking it, and the field study counts
+        # sessions.
+        with spanlight.session(name="shipgate.item"):
+            span = trace.get_current_span()
+            span.set_attribute("shipgate.item_id", item.id)
+            span.set_attribute("shipgate.slices", ",".join(item.slices))
 
             if cache is not None:
                 cached = await cache.get(key)
                 if cached is not None:
-                    span.set_attribute("cache_hit", True)
-                    span.set_attribute("score", cached.score)
+                    span.set_attribute("shipgate.cache_hit", True)
+                    span.set_attribute("shipgate.score", cached.score)
                     return cached.model_copy(update={"cache_hit": True})
-            span.set_attribute("cache_hit", False)
+            span.set_attribute("shipgate.cache_hit", False)
 
             started = time.monotonic()
             try:
@@ -112,9 +118,12 @@ async def execute_run(
                     result = await runner.score_item(item, target)
             except Exception as exc:  # noqa: BLE001 - one bad item must not kill the run
                 latency_ms = (time.monotonic() - started) * 1000
-                span.set_attribute("latency_ms", latency_ms)
-                span.set_attribute("error", f"{type(exc).__name__}: {exc}")
-                span.set_status(Status(StatusCode.ERROR, str(exc)))
+                span.set_attribute("shipgate.latency_ms", latency_ms)
+                # The class, never the message. This used to interpolate the
+                # exception, which put provider text and whatever it quoted back
+                # into a span bound for a shared Grafana org.
+                span.set_attribute(ERROR_TYPE, type(exc).__name__)
+                span.set_status(Status(StatusCode.ERROR, type(exc).__name__))
                 return ItemResult(
                     item_id=item.id,
                     output="",
@@ -124,14 +133,14 @@ async def execute_run(
                     error=f"{type(exc).__name__}: {exc}",
                 )
 
-            span.set_attribute("score", result.score)
+            span.set_attribute("shipgate.score", result.score)
             if result.latency_ms is not None:
-                span.set_attribute("latency_ms", result.latency_ms)
+                span.set_attribute("shipgate.latency_ms", result.latency_ms)
             if result.error:
                 # A recorded error is still a failed item, so the span says so
                 # even though the run continued.
-                span.set_attribute("error", result.error)
-                span.set_status(Status(StatusCode.ERROR, result.error))
+                span.set_attribute(ERROR_TYPE, result.error.split(":", 1)[0])
+                span.set_status(Status(StatusCode.ERROR, result.error.split(":", 1)[0]))
 
             # Errors are never cached. A rate limit or a parse failure is a
             # property of that moment, not of the input, and caching it would
@@ -140,7 +149,9 @@ async def execute_run(
                 await cache.put(key, result)
             return result
 
-    with tracer.start_as_current_span("shipgate.run") as run_span:
+    # A domain span, not a session. The session is the gate run, opened by the
+    # CLI, and each item opens one of its own inside this.
+    with spanlight.get_tracer().start_as_current_span("shipgate.run") as run_span:
         run_span.set_attribute("runner", runner.name)
         run_span.set_attribute("runner_fingerprint", runner.fingerprint)
         run_span.set_attribute("target", str(target_fingerprint))

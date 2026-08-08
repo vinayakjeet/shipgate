@@ -7,13 +7,20 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+from spanlight.attributes import (
+    COST_USD,
+    ERROR_TYPE,
+    GEN_AI_INPUT_TOKENS,
+    GEN_AI_OUTPUT_TOKENS,
+    GEN_AI_RESPONSE_MODEL,
+    SESSION_ID,
+)
 
 from llm import ChatClient, ChatResponse
 from shipgate.runners.base import execute_run
 from shipgate.runners.exact import ExactMatchRunner
 from shipgate.runners.judge import JudgeRunner
 from shipgate.targets import StubTarget
-from shipgate.tracing import setup_tracing
 from shipgate.types import DatasetItem
 
 ITEMS = [
@@ -55,9 +62,12 @@ def test_span_attributes(spans):
 
     items = by_name(spans, "shipgate.item")
     assert len(items) == 2
-    assert {s.attributes["item_id"] for s in items} == {"a", "b"}
-    assert all("score" in s.attributes for s in items)
-    assert all("cache_hit" in s.attributes for s in items)
+    assert {s.attributes["shipgate.item_id"] for s in items} == {"a", "b"}
+    assert all("shipgate.score" in s.attributes for s in items)
+    assert all("shipgate.cache_hit" in s.attributes for s in items)
+    # Every item span carries the session it belongs to, which is what the
+    # dashboards group by and what the field study counts.
+    assert all(SESSION_ID in s.attributes for s in items)
 
 
 def test_item_spans_are_children_of_the_run_span(spans):
@@ -83,7 +93,12 @@ def test_failing_items_are_marked_as_errors(spans):
 
     item = by_name(spans, "shipgate.item")[0]
     assert item.status.status_code.name == "ERROR"
-    assert "provider exploded" in item.attributes["error"]
+    # The class, never the message. This used to interpolate the exception, so
+    # "provider exploded" and anything a provider happened to quote back went
+    # into a span bound for a shared Grafana org.
+    assert item.attributes[ERROR_TYPE] == "RuntimeError"
+    assert "provider exploded" not in str(item.attributes)
+    assert "provider exploded" not in str(item.events)
     assert by_name(spans, "shipgate.run")[0].attributes["error_count"] == 1
 
 
@@ -111,14 +126,15 @@ def test_judge_span_records_model_tokens_and_verdict(spans, monkeypatch):
 
     asyncio.run(execute_run(runner, ITEMS[:1], StubTarget(), dataset_hash="h"))
 
-    judge = by_name(spans, "shipgate.judge")
+    judge = by_name(spans, "chat")
     assert len(judge) == 1
     attrs = judge[0].attributes
-    assert attrs["model"] == "gemini-3.6-flash"
-    assert attrs["rubric_version"] == "v1"
-    assert attrs["tokens_in"] == 12
-    assert attrs["tokens_out"] == 195
-    assert attrs["verdict"] == "pass"
+    assert attrs[GEN_AI_RESPONSE_MODEL] == "gemini-3.6-flash"
+    assert attrs["shipgate.rubric_version"] == "v1"
+    assert attrs[GEN_AI_INPUT_TOKENS] == 12
+    assert attrs[GEN_AI_OUTPUT_TOKENS] == 195
+    assert attrs[COST_USD] == 0.0
+    assert attrs["shipgate.verdict"] == "pass"
 
 
 def test_cache_hits_are_visible_in_the_trace(spans):
@@ -129,21 +145,17 @@ def test_cache_hits_are_visible_in_the_trace(spans):
     spans.clear()
     asyncio.run(execute_run(ExactMatchRunner(), ITEMS, StubTarget(), dataset_hash="h", cache=cache))
 
-    assert all(s.attributes["cache_hit"] for s in by_name(spans, "shipgate.item"))
+    assert all(s.attributes["shipgate.cache_hit"] for s in by_name(spans, "shipgate.item"))
     assert by_name(spans, "shipgate.run")[0].attributes["cache_hits"] == 2
 
 
-def test_tracing_is_disabled_without_an_endpoint(monkeypatch):
-    """A project that has not configured Grafana must pay nothing, not construct
-    an exporter that fails silently in the background."""
-    monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
-    assert setup_tracing() is False
-
-
-def test_tracing_enables_with_an_endpoint(monkeypatch):
-    monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "https://otlp.example.test/v1/traces")
-    monkeypatch.setattr(trace, "set_tracer_provider", lambda provider: None)
-    assert setup_tracing() is True
+# Spanlight's own enable/disable tests used to be duplicated here. They are gone
+# on purpose. Calling spanlight.init() in-process installs a global MeterProvider
+# as well as a tracer provider, and patching only the tracer left a periodic
+# exporter thread posting to a dead host for the rest of the session: nine
+# unrelated runner tests failed and the suite went from seconds to four and a
+# half minutes. Spanlight tests that path in a subprocess, which is where a
+# write-once global belongs.
 
 
 def test_instrumented_code_runs_with_no_provider_configured():

@@ -612,6 +612,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
+    { name = "spanlight" },
     { name = "structlog" },
     { name = "tenacity" },
     { name = "typer" },
@@ -636,6 +637,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.6" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
     { name = "pyyaml", specifier = ">=6.0" },
+    { name = "spanlight", git = "https://github.com/vinayakjeet/spanlight" },
     { name = "structlog", specifier = ">=24.4" },
     { name = "tenacity", specifier = ">=9.0" },
     { name = "typer", specifier = ">=0.15" },
@@ -647,6 +649,18 @@ dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
     { name = "ruff", specifier = ">=0.7" },
+]
+
+[[package]]
+name = "spanlight"
+version = "0.1.0"
+source = { git = "https://github.com/vinayakjeet/spanlight#63900d904394ef66dbceedb8789b0d0ef0920c03" }
+dependencies = [
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+    { name = "opentelemetry-sdk" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+    { name = "structlog" },
 ]
 
 [[package]]

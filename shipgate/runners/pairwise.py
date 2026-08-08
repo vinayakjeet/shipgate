@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import time
 
+import spanlight
+from spanlight.attributes import GEN_AI_RESPONSE_MODEL
+
 from llm import ChatClient, ChatMessage
 from shipgate.runners.judge import JUDGE_FAILURES, JudgeParseError, parse_json_object
 from shipgate.runners.rubrics import PAIRWISE_RUBRIC_V1, PairwiseRubric
@@ -71,7 +74,20 @@ class PairwiseRunner:
             ChatMessage(role="user", content=prompt),
         ]
         kwargs = {"model": self._model} if self._model else {}
-        response = await self._client.complete(self._provider, messages, **kwargs)
+
+        # Pairwise makes two of these per item, one for each ordering, and until
+        # now neither was traced at all. A run's real judge spend was therefore
+        # invisible in exactly the runner that costs the most.
+        with spanlight.model_span(provider=self._provider) as span:
+            span.set_attribute("shipgate.rubric_version", self.rubric.version)
+            response = await self._client.complete(self._provider, messages, **kwargs)
+            span.set_attribute(GEN_AI_RESPONSE_MODEL, response.model)
+            spanlight.record_usage(
+                tokens_in=response.tokens_in,
+                tokens_out=response.tokens_out,
+                cost_usd=response.cost_usd,
+                provider=response.provider,
+            )
         return parse_winner(response.text)[0]
 
     async def score_item(self, item: DatasetItem, target: Target) -> ItemResult:

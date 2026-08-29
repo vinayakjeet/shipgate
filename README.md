@@ -38,6 +38,12 @@ examples, across three rubric versions. Regenerate with
 | v2, judge blind | 0.861 | 95% | 5 | real judgement |
 | v3, boundaries named | **0.921** | 97% | 3 | real judgement |
 
+**The 97% is the flattering number.** Raw agreement and kappa answer different
+questions, and the gap between them on v3 is what chance agreement was worth on
+this label distribution. Quoting 97% and stopping would describe the same three
+disagreements while sounding better about them, which is why the kappa carries
+the bold and the agreement column sits beside it rather than alone.
+
 **v1 scoring 1.000 is the finding, not the success.** It was handed both the
 expected intent and the prediction, so agreeing with a human applying strict
 equality is trivial: `==` scores 1.000 on that task. It measured string
@@ -61,6 +67,11 @@ changing between them:
 | run | 1 | 2 | 3 | 4 | 5 | mean | stdev | spread |
 |---|---|---|---|---|---|---|---|---|
 | score | 0.80 | 0.75 | 0.85 | 0.65 | 0.75 | 0.760 | 0.074 | **0.200** |
+
+That table is a test-retest reliability measurement. The items, the judge and
+the rubric are all held still, so every point of spread in it is instrument
+noise rather than signal, and it is separate from the agreement numbers above:
+a judge can agree with a human 97% of the time and still not agree with itself.
 
 The noise floor is 20 points while the gate's default threshold was 2. That
 default would have fired on nearly every run of an unchanged model, and a gate

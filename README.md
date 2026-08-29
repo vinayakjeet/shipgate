@@ -9,7 +9,7 @@ on free tiers.
 [Dashboard](https://shipgate-890d.onrender.com/) ·
 [Adoption guide](docs/ADOPTING.md) ·
 [Decisions](DECISIONS.md) ·
-[What broke](LEARNING.md)
+[What broke](#what-broke)
 
 ## Problem
 
@@ -190,7 +190,8 @@ requests per rolling minute, and under an exhausted quota per-item latency was 5
 seconds, essentially all of it waiting. Groq's binding limit on the 70B model is
 tokens per minute rather than requests, so 400-token judge prompts exhaust it long
 before the documented request ceiling, and the resulting wait measured 350
-seconds. Both are in [QUOTAS.md](QUOTAS.md).
+seconds. Both are in
+[`llm/providers/quotas.yaml`](llm/providers/quotas.yaml).
 
 ## Technical Decisions
 
@@ -215,8 +216,6 @@ judge scores 1.0 or 0.0, while a purely position-biased one contradicts itself a
 lands on 0.5, which is the signal that the comparison is worthless.
 
 ## What Broke
-
-Longer log in [LEARNING.md](LEARNING.md).
 
 **The gate could not fail. Twice.** First, the CLI stored the current run before
 resolving the baseline, so every run compared against itself and reported a delta
@@ -277,7 +276,7 @@ Gating another project takes two files and one secret. See
 
 Not an experiment tracker, a labeling platform, a prompt registry, or a monitoring
 system. It does not train models, and it never fixes a regression, it only refuses
-to let one through. Full list of non-goals in [SPEC.md](SPEC.md).
+to let one through.
 
 The brief asked for ShipGate to gate Tollgate by end of build. Tollgate is built
 five days later, so ShipGate gates itself instead and ships the adoption contract

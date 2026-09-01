@@ -25,6 +25,7 @@ from shipgate.runners.exact import ExactMatchRunner
 from shipgate.scoring import (
     cache_hit_rate,
     error_count,
+    judgment_cost,
     overall_score,
     p50_latency_ms,
     slice_scores,
@@ -176,6 +177,7 @@ def run(
         )
     )
 
+    cost = judgment_cost(results)
     record = RunRecord(
         run_id=f"r_{uuid.uuid4().hex[:16]}",
         dataset_id=dataset_id or dataset.stem,
@@ -187,7 +189,7 @@ def run(
         n=len(results),
         score=overall_score(results),
         slices=slice_scores(results),
-        cost_usd=0.0,
+        cost_usd=cost.total_usd or 0.0,
         p50_latency_ms=p50_latency_ms(results),
         cache_hit_rate=cache_hit_rate(results),
         error_count=error_count(results),
@@ -195,6 +197,8 @@ def run(
     )
 
     typer.echo(f"score={record.score:.2f} n={record.n}")
+    if cost.judgments:
+        typer.echo(f"  judge cost: {cost.describe()}")
     for tag, value in record.slices.items():
         typer.echo(f"  {tag}: {value:.2f}")
 
@@ -393,7 +397,7 @@ def gate(
         n=len(results),
         score=overall_score(results),
         slices=slice_scores(results),
-        cost_usd=0.0,
+        cost_usd=judgment_cost(results).total_usd or 0.0,
         p50_latency_ms=p50_latency_ms(results),
         cache_hit_rate=cache_hit_rate(results),
         error_count=error_count(results),

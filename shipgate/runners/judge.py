@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import time
+from dataclasses import dataclass
 
 import spanlight
 from spanlight.attributes import GEN_AI_RESPONSE_MODEL
@@ -18,6 +19,31 @@ _FENCE = re.compile(r"^\s*```(?:json)?\s*|\s*```\s*$", re.MULTILINE)
 
 class JudgeParseError(ValueError):
     """The judge replied with something that is not a usable verdict."""
+
+
+@dataclass(frozen=True)
+class JudgeUsage:
+    """What one judgment consumed.
+
+    `cost_usd` is None rather than 0.0 when the provider declares no price. A free
+    tier costs nothing to run and that is worth reporting, but it is not the same
+    claim as a paid judge that happened to cost nothing, and a column that cannot
+    tell them apart makes the cheapest configuration look identical to the one
+    nobody priced.
+    """
+
+    tokens_in: int | None = None
+    tokens_out: int | None = None
+    cost_usd: float | None = None
+    model: str = ""
+
+    def as_meta(self) -> dict:
+        return {
+            "judge_tokens_in": self.tokens_in,
+            "judge_tokens_out": self.tokens_out,
+            "judge_cost_usd": self.cost_usd,
+            "judge_model": self.model,
+        }
 
 
 # Everything that means "this item did not get judged" rather than "it failed".
@@ -90,7 +116,9 @@ class JudgeRunner:
         stale results forever after a rubric edit."""
         return f"judge:{self._provider}:{self._model or 'default'}:{self.rubric.version}"
 
-    async def _judge_one(self, item: DatasetItem, output: str) -> tuple[float, str]:
+    async def _judge_one(
+        self, item: DatasetItem, output: str
+    ) -> tuple[float, str, JudgeUsage]:
         prompt = self.rubric.render(
             ticket=str(item.input.get("prompt", "")),
             expected=item.expected or "",
@@ -120,20 +148,36 @@ class JudgeRunner:
 
             score, reason = parse_verdict(response.text)
             span.set_attribute("shipgate.verdict", "pass" if score == 1.0 else "fail")
-            return score, reason
+            # Usage travels back with the verdict, not only onto the span. A run
+            # record that reports cost_usd of zero for a paid judge is stating a
+            # measured figure it never measured, and the numbers were already
+            # here: the provider computes cost and this function threw it away.
+            return score, reason, JudgeUsage(
+                tokens_in=response.tokens_in,
+                tokens_out=response.tokens_out,
+                cost_usd=response.cost_usd,
+                model=response.model,
+            )
 
     async def score_item(self, item: DatasetItem, target: Target) -> ItemResult:
         started = time.monotonic()
         output = ""
         try:
             output = (await target(item)).output
-            score, reason = await self._judge_one(item, output)
+            score, reason, usage = await self._judge_one(item, output)
             error = None
         except JUDGE_FAILURES as exc:
             # Scored 0 but never silently: the error is recorded on the item and
             # surfaced in the run summary, so a broken judge cannot pass itself
             # off as a model regression.
             score, reason, error = 0.0, "", f"{type(exc).__name__}: {exc}"
+            # A judgment that never happened has no usage. Recording zero here
+            # would let a run of failures report itself as a very cheap one.
+            usage = JudgeUsage()
+
+        meta = usage.as_meta()
+        if reason:
+            meta["reason"] = reason
 
         return ItemResult(
             item_id=item.id,
@@ -142,5 +186,5 @@ class JudgeRunner:
             slices=item.slices,
             latency_ms=(time.monotonic() - started) * 1000,
             error=error,
-            meta={"reason": reason} if reason else {},
+            meta=meta,
         )

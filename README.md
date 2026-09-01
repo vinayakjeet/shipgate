@@ -204,6 +204,42 @@ before the documented request ceiling, and the resulting wait measured 350
 seconds. Both are in
 [`llm/providers/quotas.yaml`](llm/providers/quotas.yaml).
 
+## When this eval set stops being trustworthy
+
+A frozen golden set stops measuring the thing it was built for, and the failure is
+silent: scores stay high while the signal drains out of them. So the policy is
+written down rather than remembered.
+
+**Refresh cadence: quarterly, or immediately on a saturation signal.** Whichever
+comes first. Quarterly because model releases are roughly that frequent and each
+one is a chance for the set to have been trained on.
+
+**What gets replaced: a third of the items, chosen from the ones nothing fails
+on.** An item every configuration passes has stopped discriminating, and the set
+pays for it on every run. The two-thirds that stay are what makes scores
+comparable across refreshes; the third that rotates is what keeps them meaningful.
+Retired items are kept in the repository rather than deleted, because a question
+that stopped discriminating is evidence about the models, not waste.
+
+**Saturation is detected on the slice, not the aggregate.** Three signals, any one
+of which triggers a refresh:
+
+- A slice scores above 0.95 for two consecutive runs on two different targets.
+  One target scoring highly is a good model; two is a slice that no longer asks
+  anything.
+- The spread between the best and worst configuration on a slice falls below the
+  judge noise floor measured for that slice, currently 0.200 on the
+  `llama-3.1-8b-instant` judge. A difference smaller than the instrument cannot be
+  reported, and a slice where every configuration lands inside it has stopped
+  being a measurement.
+- More than a third of items in a slice have never failed for any target.
+
+**What this policy does not do.** It does not detect contamination directly. An
+item leaking into a training set shows up here as saturation, eventually, and
+by then the number it was inflating has already been published. Detecting that
+properly needs the n-gram overlap check Nishana runs against its own eval set, and
+it is not implemented here.
+
 ## Technical Decisions
 
 Full log in [DECISIONS.md](DECISIONS.md). The four that shaped the design:

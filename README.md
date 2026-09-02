@@ -204,6 +204,50 @@ before the documented request ceiling, and the resulting wait measured 350
 seconds. Both are in
 [`llm/providers/quotas.yaml`](llm/providers/quotas.yaml).
 
+## Which judge, for which task type
+
+A single best judge is not a portable claim. The reference study behind this
+found judge rankings shifting by up to 14 positions across benchmarks, so the
+recommendation is indexed by task type and the aggregate is shown last, as the
+number the per-slice rows exist to contradict.
+
+Rubric v3, 100 items, human labels as ground truth. Raw agreement is printed
+beside every kappa, because the gap between them is the point.
+
+| slice | n | gemini-3.6-flash | groq openai/gpt-oss-20b | winner |
+|---|---|---|---|---|
+| intent:account | 25 | 1.000 (100% raw) | 1.000 (100% raw) | tie inside noise |
+| intent:billing | 25 | 1.000 (100% raw) | 1.000 (100% raw) | tie inside noise |
+| intent:other | 25 | 0.920 (96% raw) | 0.841 (92% raw) | tie inside noise |
+| intent:technical | 25 | n/a (92% raw) | n/a (92% raw) | kappa undefined |
+| lang:en | 48 | 0.951 (98% raw) | 0.899 (96% raw) | tie inside noise |
+| lang:hi | 12 | 1.000 (100% raw) | 1.000 (100% raw) | tie inside noise |
+| lang:hinglish | 40 | 0.844 (95% raw) | 0.844 (95% raw) | tie inside noise |
+| len:long | 39 | 0.935 (97% raw) | 0.866 (95% raw) | tie inside noise |
+| len:short | 61 | 0.912 (97% raw) | 0.912 (97% raw) | tie inside noise |
+| **overall** | 100 | **0.921** | **0.893** | **gemini** |
+
+Measured 2026-09-02, regenerate with `uv run python scripts/judge_comparison.py
+--rubric v3`. Differences below the measured noise floor of 0.200 are reported as
+ties rather than as wins, so this table claims one result and eight non-results.
+
+**The null result is the honest headline.** Gemini wins overall and no task type
+contradicts it. On these four intents the ranking happens to be portable, which is
+not evidence that rankings are portable in general; it is one dataset and one
+rubric against a reference that measured 14-position shifts across many.
+
+**`intent:technical` is the row worth reading twice.** Both judges agree with the
+human 92% of the time there and both score a kappa of zero. Not a deflated kappa,
+an undefined one: all 25 human labels on that slice are `pass`, so chance
+agreement is total and the statistic collapses whatever the judge did. A table
+reporting only kappa would show two judges failing completely on a slice where
+they were right 23 times out of 25. This is the deflation gap in its limit case,
+and it is why raw agreement sits in every cell above.
+
+**A caveat on the second judge.** Both Llama models this repo documented were
+retired by Groq before this ran, including the one the 0.200 noise floor was
+measured on. See QUOTAS.md.
+
 ## When this eval set stops being trustworthy
 
 A frozen golden set stops measuring the thing it was built for, and the failure is

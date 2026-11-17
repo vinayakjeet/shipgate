@@ -15,7 +15,7 @@ inputs:
     required: false
     default: ""
   runner:
-    description: "Runner type: exact, judge, or pairwise."
+    description: "Runner type. Only exact gates today: the judge moved 20 points across identical runs, so judge and pairwise stay advisory and run from scripts."
     required: false
     default: exact
   baseline-ref:

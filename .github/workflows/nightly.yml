@@ -1,6 +1,8 @@
-# Nightly drift detection. A model can degrade with nothing in the repo changing,
-# because the judge model moves under an alias and providers retune. Only a run on
-# a schedule catches that, since nobody is opening a change to trigger the gate.
+# Nightly run on the default branch. It keeps a fresh baseline for the gate and
+# fails loudly if scoring breaks with nothing in the repo changing. As written it
+# scores the stub with the exact runner and the result cache on, so it cannot see
+# judge drift yet. That needs the judge runner, a real target and no cache,
+# because the judge model moves under an alias and providers retune.
 name: Nightly
 
 on:

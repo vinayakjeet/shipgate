@@ -1,0 +1,42 @@
+# Builds the image and checks that the container starts and answers its health
+# check. The Dockerfile came with the starter template and had never been built:
+# it did not copy shipgate/, which the dashboard imports, so the container would
+# have stopped on its first import. Render runs the native Python runtime, so
+# nothing else exercises this file.
+name: Docker
+
+on:
+  push:
+    paths:
+      - Dockerfile
+      - pyproject.toml
+      - uv.lock
+      - "app/**"
+      - "llm/**"
+      - "shipgate/**"
+      - .github/workflows/docker.yml
+  workflow_dispatch:
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t shipgate:ci .
+
+      - name: Start the container and wait for /healthz
+        run: |
+          set -euo pipefail
+          docker run -d --name shipgate -p 8000:8000 shipgate:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/healthz; then
+              echo
+              echo "healthy after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs shipgate
+          exit 1

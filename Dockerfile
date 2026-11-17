@@ -4,11 +4,18 @@ FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
 WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
+# Spanlight is a git dependency, and uv fetches git dependencies with the git CLI,
+# which the slim image does not carry.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 COPY app ./app
 COPY llm ./llm
+COPY shipgate ./shipgate
 RUN uv sync --frozen --no-dev
 
 
@@ -20,6 +27,9 @@ RUN groupadd --gid 1000 appuser && useradd --uid 1000 --gid appuser --create-hom
 COPY --from=builder /app/.venv /app/.venv
 COPY app ./app
 COPY llm ./llm
+# The dashboard imports shipgate.store, and the project is not installed as a
+# package (package = false), so the source has to be on the path beside app/.
+COPY shipgate ./shipgate
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1
